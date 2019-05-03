@@ -32,10 +32,10 @@ LDFLAGS := -L$(BIN_DIR)/lib
 ifeq ($(ARCH),arm)
 LDFLAGS += $(HI_LIB_PATHS) 
 else
-LDFLAGS += -lpthread -ldl
+LDFLAGS += -ldl
 endif
 
-LDFLAGS += -lPtp4l -lrt -lm
+LDFLAGS += -lPtp4l -lpthread -lrt -lm
 
 
 ptp4l:$(OBJ_DIR)/ptp4l.o 
