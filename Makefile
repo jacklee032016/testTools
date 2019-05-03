@@ -33,9 +33,12 @@ export RELEASES_NAME
 
 
 
-#SUBDIRS += ptpd/src
-#SUBDIRS += linuxptp
-SUBDIRS += omtools
+# SUBDIRS += ptpd/src
+SUBDIRS += linuxptp/src
+SUBDIRS += linuxptp/programs
+
+# SUBDIRS += ntools
+# SUBDIRS += omtools
 
 
 
