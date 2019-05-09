@@ -20,8 +20,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "clockcheck.h"
-#include "print.h"
+#include "ptpCompact.h"
 
 #define CHECK_MIN_INTERVAL 100000000
 #define CHECK_MAX_FREQ 900000000

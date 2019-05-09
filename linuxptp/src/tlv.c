@@ -22,8 +22,6 @@
 #include <string.h>
 
 #include "port.h"
-#include "tlv.h"
-#include "msg.h"
 
 #define HTONS(x) (x) = htons(x)
 #define HTONL(x) (x) = htonl(x)
@@ -284,7 +282,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		ppn = (struct port_properties_np *)m->data;
 		ppn->portIdentity.portNumber = ntohs(ppn->portIdentity.portNumber);
 		extra_len = sizeof(struct port_properties_np);
-		extra_len += ppn->interface.length;
+		extra_len += ppn->intfTxt.length;
 		break;
 	case TLV_SAVE_IN_NON_VOLATILE_STORAGE:
 	case TLV_RESET_NON_VOLATILE_STORAGE:

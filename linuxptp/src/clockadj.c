@@ -21,9 +21,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "clockadj.h"
+#include "ptpCompact.h"
 #include "missing.h"
-#include "print.h"
 
 #define NS_PER_SEC 1000000000LL
 

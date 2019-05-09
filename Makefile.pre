@@ -78,7 +78,7 @@ endif
 # CXXFLAGS += -Wall  -Werror -D__DOXYGEN__-LWIP_RAND=rand
 
 
-CFLAGS=-g -Wall -DIPv4 -DLWIP_DEBUG -D$(ARCH) -Dlinux -I$(RULE_DIR)/include 
+CFLAGS=-g -Wall -DIPv4 -DLWIP_DEBUG -D$(ARCH) -Dlinux -I$(RULE_DIR)/include -DETHTOOL_GET_TS_INFO
 
 CFLAGS_0=-g -Wall -DIPv4 -DLWIP_DEBUG -pedantic \
 	-Wparentheses -Wsequence-point -Wswitch-default \

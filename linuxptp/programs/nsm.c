@@ -26,11 +26,8 @@
 #include <inttypes.h>
 #include <arpa/inet.h>
 
-#include "config.h"
-#include "print.h"
-#include "rtnl.h"
+#include "ptpConfig.h"
 #include "util.h"
-#include "version.h"
 
 #define IFMT		"\n\t\t"
 #define NSM_NFD		3
@@ -127,7 +124,7 @@ static void nsm_handle_msg(struct nsm *nsm, struct ptp_message *msg, FILE *fp)
 	struct PortAddress *paddr;
 	struct currentDS cds;
 	struct parentDS *pds;
-	struct Timestamp ts;
+	struct WireTimeStamp ts;
 	unsigned char *ptr;
 	int64_t offset;
 
@@ -195,7 +192,7 @@ static void nsm_handle_msg(struct nsm *nsm, struct ptp_message *msg, FILE *fp)
 		IFMT "portState                             %s"
 		IFMT "parentPortAddress                     %hu %s\n",
 		offset,
-		ps_str[head->port_state],
+		ptpPortStateString(head->port_state),
 		head->parent_addr.networkProtocol,
 		portaddr2str(&head->parent_addr));
 	fprintf(fp, "\tparentDataset"
@@ -262,11 +259,11 @@ static void nsm_help(FILE *fp)
 static int nsm_open(struct nsm *nsm, struct config *cfg)
 {
 	enum transport_type transport;
-	struct interface *iface;
+	struct PtpInterface *iface;
 	const char *name;
 	int count = 0;
 
-	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
+	STAILQ_FOREACH(iface, &cfg->intfs, list) {
 		rtnl_get_ts_device(iface->name, iface->ts_label);
 		if (iface->ts_label[0] == '\0') {
 			strncpy(iface->ts_label, iface->name, MAX_IFNAME_SIZE);
@@ -277,7 +274,7 @@ static int nsm_open(struct nsm *nsm, struct config *cfg)
 		pr_err("need exactly one interface");
 		return -1;
 	}
-	iface = STAILQ_FIRST(&cfg->interfaces);
+	iface = STAILQ_FIRST(&cfg->intfs);
 	nsm->name = name = iface->name;
 	nsm->cfg = cfg;
 
@@ -331,7 +328,7 @@ static struct ptp_message *nsm_recv(struct nsm *nsm, int fd)
 		pr_err("recv message failed");
 		goto failed;
 	}
-	err = msg_post_recv(msg, cnt);
+	err = ptpMsgReceive(msg, cnt);
 	if (err) {
 		switch (err) {
 		case -EBADMSG:
@@ -345,7 +342,7 @@ static struct ptp_message *nsm_recv(struct nsm *nsm, int fd)
 	}
 	if (msg_sots_missing(msg)) {
 		pr_err("received %s without timestamp",
-		       msg_type_string(msg_type(msg)));
+		       ptpMsgTypeString(msg_type(msg)));
 		goto failed;
 	}
 

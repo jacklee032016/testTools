@@ -21,11 +21,12 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "print.h"
-#include "tlv.h"
-#include "transport.h"
+#include "ptpConfig.h"
+#include "ptpCompact.h"
+#include "ptpProtocol.h"
+#include "ptpImplements.h"
+
 #include "util.h"
-#include "pmc_common.h"
 
 /*
    Field                  Len  Type
@@ -48,10 +49,10 @@
 /* Includes one extra byte to make length even. */
 #define EMPTY_PTP_TEXT 2
 
-static void do_get_action(struct pmc *pmc, int action, int index, char *str);
-static void do_set_action(struct pmc *pmc, int action, int index, char *str);
-static void not_supported(struct pmc *pmc, int action, int index, char *str);
-static void null_management(struct pmc *pmc, int action, int index, char *str);
+static void do_get_action(struct PtpMgmtClient *pmc, int action, int index, char *str);
+static void do_set_action(struct PtpMgmtClient *pmc, int action, int index, char *str);
+static void not_supported(struct PtpMgmtClient *pmc, int action, int index, char *str);
+static void null_management(struct PtpMgmtClient *pmc, int action, int index, char *str);
 
 static const char *action_string[] = {
 	"GET",
@@ -64,7 +65,7 @@ static const char *action_string[] = {
 struct management_id {
 	char name[64];
 	int code;
-	void (*func)(struct pmc *pmc, int action, int index, char *str);
+	void (*func)(struct PtpMgmtClient *pmc, int action, int index, char *str);
 };
 
 struct management_id idtab[] = {
@@ -122,7 +123,7 @@ struct management_id idtab[] = {
 	{ "PORT_DATA_SET_NP", TLV_PORT_DATA_SET_NP, do_set_action },
 };
 
-static void do_get_action(struct pmc *pmc, int action, int index, char *str)
+static void do_get_action(struct PtpMgmtClient *pmc, int action, int index, char *str)
 {
 	if (action == GET)
 		pmc_send_get_action(pmc, idtab[index].code);
@@ -130,7 +131,7 @@ static void do_get_action(struct pmc *pmc, int action, int index, char *str)
 		fprintf(stderr, "%s only allows GET\n", idtab[index].name);
 }
 
-static void do_set_action(struct pmc *pmc, int action, int index, char *str)
+static void do_set_action(struct PtpMgmtClient *pmc, int action, int index, char *str)
 {
 	struct grandmaster_settings_np gsn;
 	struct management_tlv_datum mtd;
@@ -224,12 +225,12 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 	}
 }
 
-static void not_supported(struct pmc *pmc, int action, int index, char *str)
+static void not_supported(struct PtpMgmtClient *pmc, int action, int index, char *str)
 {
 	fprintf(stdout, "sorry, %s not supported yet\n", idtab[index].name);
 }
 
-static void null_management(struct pmc *pmc, int action, int index, char *str)
+static void null_management(struct PtpMgmtClient *pmc, int action, int index, char *str)
 {
 	if (action == GET)
 		pmc_send_get_action(pmc, idtab[index].code);
@@ -272,7 +273,7 @@ static int parse_id(char *s)
 	return index;
 }
 
-static int parse_target(struct pmc *pmc, const char *str)
+static int parse_target(struct PtpMgmtClient *pmc, const char *str)
 {
 	struct PortIdentity pid;
 
@@ -302,7 +303,7 @@ static void print_help(FILE *fp)
 	fprintf(fp, "\n");
 }
 
-struct pmc {
+struct PtpMgmtClient {
 	UInteger16 sequence_id;
 	UInteger8 boundary_hops;
 	UInteger8 domain_number;
@@ -315,13 +316,13 @@ struct pmc {
 	int zero_length_gets;
 };
 
-struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
+struct PtpMgmtClient *pmc_create(struct config *cfg, enum transport_type transport_type,
 		       const char *iface_name, UInteger8 boundary_hops,
 		       UInteger8 domain_number, UInteger8 transport_specific,
 		       int zero_datalen)
 {
-	struct interface iface;
-	struct pmc *pmc;
+	struct PtpInterface iface;
+	struct PtpMgmtClient *pmc;
 
 	memset(&iface, 0, sizeof(iface));
 
@@ -369,14 +370,14 @@ failed:
 	return NULL;
 }
 
-void pmc_destroy(struct pmc *pmc)
+void pmc_destroy(struct PtpMgmtClient *pmc)
 {
 	transport_close(pmc->transport, &pmc->fdarray);
 	transport_destroy(pmc->transport);
 	free(pmc);
 }
 
-static struct ptp_message *pmc_message(struct pmc *pmc, uint8_t action)
+static struct ptp_message *pmc_message(struct PtpMgmtClient *pmc, uint8_t action)
 {
 	struct ptp_message *msg;
 	int pdulen;
@@ -405,7 +406,7 @@ static struct ptp_message *pmc_message(struct pmc *pmc, uint8_t action)
 	return msg;
 }
 
-static int pmc_send(struct pmc *pmc, struct ptp_message *msg)
+static int pmc_send(struct PtpMgmtClient *pmc, struct ptp_message *msg)
 {
 	int err;
 
@@ -418,7 +419,7 @@ static int pmc_send(struct pmc *pmc, struct ptp_message *msg)
 			      TRANS_GENERAL, msg);
 }
 
-static int pmc_tlv_datalen(struct pmc *pmc, int id)
+static int pmc_tlv_datalen(struct PtpMgmtClient *pmc, int id)
 {
 	int len = 0;
 
@@ -479,12 +480,12 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 	return len;
 }
 
-int pmc_get_transport_fd(struct pmc *pmc)
+int pmc_get_transport_fd(struct PtpMgmtClient *pmc)
 {
 	return pmc->fdarray.fd[FD_GENERAL];
 }
 
-int pmc_send_get_action(struct pmc *pmc, int id)
+int pmc_send_get_action(struct PtpMgmtClient *pmc, int id)
 {
 	int datalen, pdulen;
 	struct ptp_message *msg;
@@ -534,7 +535,7 @@ int pmc_send_get_action(struct pmc *pmc, int id)
 	return 0;
 }
 
-int pmc_send_set_action(struct pmc *pmc, int id, void *data, int datasize)
+int pmc_send_set_action(struct PtpMgmtClient *pmc, int id, void *data, int datasize)
 {
 	struct management_tlv *mgt;
 	struct ptp_message *msg;
@@ -559,7 +560,7 @@ int pmc_send_set_action(struct pmc *pmc, int id, void *data, int datasize)
 	return 0;
 }
 
-struct ptp_message *pmc_recv(struct pmc *pmc)
+struct ptp_message *pmc_recv(struct PtpMgmtClient *pmc)
 {
 	struct ptp_message *msg;
 	int cnt, err;
@@ -575,7 +576,7 @@ struct ptp_message *pmc_recv(struct pmc *pmc)
 		pr_err("recv message failed");
 		goto failed;
 	}
-	err = msg_post_recv(msg, cnt);
+	err = ptpMsgReceive(msg, cnt);
 	if (err) {
 		switch (err) {
 		case -EBADMSG:
@@ -589,7 +590,7 @@ struct ptp_message *pmc_recv(struct pmc *pmc)
 	}
 	if (msg_sots_missing(msg)) {
 		pr_err("received %s without timestamp",
-		       msg_type_string(msg_type(msg)));
+		       ptpMsgTypeString(msg_type(msg)));
 		goto failed;
 	}
 
@@ -599,18 +600,18 @@ failed:
 	return NULL;
 }
 
-int pmc_target(struct pmc *pmc, struct PortIdentity *pid)
+int pmc_target(struct PtpMgmtClient *pmc, struct PortIdentity *pid)
 {
 	pmc->target = *pid;
 	return 0;
 }
 
-void pmc_target_port(struct pmc *pmc, UInteger16 portNumber)
+void pmc_target_port(struct PtpMgmtClient *pmc, UInteger16 portNumber)
 {
 	pmc->target.portNumber = portNumber;
 }
 
-void pmc_target_all(struct pmc *pmc)
+void pmc_target_all(struct PtpMgmtClient *pmc)
 {
 	memset(&pmc->target, 0xff, sizeof(pmc->target));
 }
@@ -620,7 +621,7 @@ const char *pmc_action_string(int action)
 	return action_string[action];
 }
 
-int pmc_do_command(struct pmc *pmc, char *str)
+int pmc_do_command(struct PtpMgmtClient *pmc, char *str)
 {
 	int action, id;
 	char action_str[10+1] = {0}, id_str[64+1] = {0};

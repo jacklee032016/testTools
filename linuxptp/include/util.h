@@ -23,23 +23,13 @@
 #include <string.h>
 #include <time.h>
 
-#include "address.h"
-#include "ddt.h"
-#include "ether.h"
-#include "transport.h"
+#include "ptpCompact.h"
+#include "ptpProtocol.h"
+#include "ptpImplements.h"
 
 #define MAX_PRINT_BYTES 16
 #define BIN_BUF_SIZE (MAX_PRINT_BYTES * 3 + 1)
 
-/**
- * Table of human readable strings, one for each port state.
- */
-extern const char *ps_str[];
-
-/**
- * Table of human readable strings, one for each port event.
- */
-extern const char *ev_str[];
 
 /**
  * Compares two binary addresses for equality.

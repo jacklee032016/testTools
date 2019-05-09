@@ -39,14 +39,9 @@
 #include <linux/pps.h>
 #include <linux/ptp_clock.h>
 
-#include "clockadj.h"
 #include "missing.h"
-#include "phc.h"
-#include "print.h"
 #include "sk.h"
-#include "sysoff.h"
 #include "util.h"
-#include "version.h"
 
 #define NSEC2SEC 1000000000.0
 

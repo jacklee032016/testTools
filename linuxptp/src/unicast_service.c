@@ -17,19 +17,26 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335 USA.
  */
+
+/* used in SIGNAL message only */
+ 
 #include <stdlib.h>
 #include <sys/queue.h>
 #include <time.h>
 
-#include "address.h"
+#include "ptpCompact.h"
+#include "ptpProtocol.h"
+#include "ptpImplements.h"
 #include "clock.h"
 #include "missing.h"
 #include "port.h"
-#include "port_private.h"
-#include "pqueue.h"
-#include "print.h"
+#include "portPrivate.h"
 #include "unicast_service.h"
 #include "util.h"
+
+
+#include "clockPrivate.h"
+
 
 #define QUEUE_LEN 16
 
@@ -157,7 +164,7 @@ static void timespec_normalize(struct timespec *ts)
 	}
 }
 
-static int unicast_service_clients(struct port *p,
+static int unicast_service_clients(struct PtpPort *p,
 				   struct unicast_service_interval *interval)
 {
 	struct unicast_client_address *client, *next;
@@ -194,8 +201,7 @@ static int unicast_service_clients(struct port *p,
 	return err;
 }
 
-static void unicast_service_extend(struct unicast_client_address *client,
-				   struct request_unicast_xmit_tlv *req)
+static void unicast_service_extend(struct unicast_client_address *client, struct request_unicast_xmit_tlv *req)
 {
 	struct timespec now;
 	time_t tmo;
@@ -215,7 +221,7 @@ static void unicast_service_extend(struct unicast_client_address *client,
 	}
 }
 
-static int unicast_service_rearm_timer(struct port *p)
+static int _unicastServiceReArmTimer(struct PtpPort *p)
 {
 	struct unicast_service_interval *interval;
 	struct itimerspec tmo;
@@ -234,7 +240,7 @@ static int unicast_service_rearm_timer(struct port *p)
 	return timerfd_settime(fd, TFD_TIMER_ABSTIME, &tmo, NULL);
 }
 
-static int unicast_service_reply(struct port *p, struct ptp_message *dst,
+static int unicast_service_reply(struct PtpPort *p, struct ptp_message *dst,
 				 struct request_unicast_xmit_tlv *req,
 				 int duration)
 {
@@ -252,7 +258,7 @@ static int unicast_service_reply(struct port *p, struct ptp_message *dst,
 	}
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {
-		pr_err("port %hu: signaling message failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"signaling message failed", portnum(p));
 	}
 out:
 	msg_put(msg);
@@ -261,7 +267,7 @@ out:
 
 /* public methods */
 
-int unicast_service_add(struct port *p, struct ptp_message *m,
+int unicast_service_add(struct PtpPort *p, struct ptp_message *m,
 			struct tlv_extra *extra)
 {
 	struct unicast_client_address *client = NULL, *ctmp, *next;
@@ -352,13 +358,13 @@ int unicast_service_add(struct port *p, struct ptp_message *m,
 			free(client);
 			return SERVICE_DENIED;
 		}
-		unicast_service_rearm_timer(p);
+		_unicastServiceReArmTimer(p);
 	}
 	LIST_INSERT_HEAD(&interval->clients, client, list);
 	return SERVICE_GRANTED;
 }
 
-void unicast_service_cleanup(struct port *p)
+void unicast_service_cleanup(struct PtpPort *p)
 {
 	struct unicast_service_interval *itmp, *inext;
 	struct unicast_client_address *ctmp, *cnext;
@@ -378,7 +384,7 @@ void unicast_service_cleanup(struct port *p)
 	free(p->unicast_service);
 }
 
-int unicast_service_deny(struct port *p, struct ptp_message *m,
+int unicast_service_deny(struct PtpPort *p, struct ptp_message *m,
 			 struct tlv_extra *extra)
 {
 	struct request_unicast_xmit_tlv *req =
@@ -387,7 +393,7 @@ int unicast_service_deny(struct port *p, struct ptp_message *m,
 	return unicast_service_reply(p, m, req, 0);
 }
 
-int unicast_service_grant(struct port *p, struct ptp_message *m,
+int unicast_service_grant(struct PtpPort *p, struct ptp_message *m,
 			  struct tlv_extra *extra)
 {
 	struct request_unicast_xmit_tlv *req =
@@ -396,7 +402,7 @@ int unicast_service_grant(struct port *p, struct ptp_message *m,
 	return unicast_service_reply(p, m, req, req->durationField);
 }
 
-int unicast_service_initialize(struct port *p)
+int unicast_service_initialize(struct PtpPort *p)
 {
 	struct config *cfg = clock_config(p->clock);
 
@@ -423,7 +429,7 @@ int unicast_service_initialize(struct port *p)
 	return 0;
 }
 
-void unicast_service_remove(struct port *p, struct ptp_message *m,
+void unicast_service_remove(struct PtpPort *p, struct ptp_message *m,
 			    struct tlv_extra *extra)
 {
 	struct unicast_client_address *ctmp, *next;
@@ -470,7 +476,7 @@ void unicast_service_remove(struct port *p, struct ptp_message *m,
 	}
 }
 
-int unicast_service_timer(struct port *p)
+int unicast_service_timer(struct PtpPort *p)
 {
 	struct unicast_service_interval *interval;
 	int err = 0, master = 0;
@@ -481,20 +487,22 @@ int unicast_service_timer(struct port *p)
 	}
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
-	switch (p->state) {
-	case PS_INITIALIZING:
-	case PS_FAULTY:
-	case PS_DISABLED:
-	case PS_LISTENING:
-	case PS_PRE_MASTER:
-	case PS_PASSIVE:
-	case PS_UNCALIBRATED:
-	case PS_SLAVE:
-		break;
-	case PS_MASTER:
-	case PS_GRAND_MASTER:
-		master = 1;
-		break;
+	switch (p->state)
+	{
+		case PS_INITIALIZING:
+		case PS_FAULTY:
+		case PS_DISABLED:
+		case PS_LISTENING:
+		case PS_PRE_MASTER:
+		case PS_PASSIVE:
+		case PS_UNCALIBRATED:
+		case PS_SLAVE:
+			break;
+			
+		case PS_MASTER:
+		case PS_GRAND_MASTER:
+			master = 1;
+			break;
 	}
 
 	while ((interval = pqueue_peek(p->unicast_service->queue)) != NULL) {
@@ -524,7 +532,8 @@ int unicast_service_timer(struct port *p)
 		pqueue_insert(p->unicast_service->queue, interval);
 	}
 
-	if (unicast_service_rearm_timer(p)) {
+	if (_unicastServiceReArmTimer(p))
+	{
 		err = -1;
 	}
 	return err;

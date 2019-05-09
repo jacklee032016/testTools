@@ -37,25 +37,13 @@
 #include <linux/pps.h>
 #include <linux/ptp_clock.h>
 
-#include "clockadj.h"
-#include "clockcheck.h"
-#include "ds.h"
-#include "fsm.h"
+#include "ptpCompact.h"
+#include "ptpProtocol.h"
 #include "missing.h"
-#include "notification.h"
-#include "ntpshm.h"
-#include "phc.h"
-#include "pi.h"
-#include "pmc_common.h"
-#include "print.h"
 #include "servo.h"
 #include "sk.h"
-#include "stats.h"
-#include "sysoff.h"
-#include "tlv.h"
-#include "uds.h"
 #include "util.h"
-#include "version.h"
+#include "ptpConfig.h"
 
 #define KP 0.7
 #define KI 0.3
@@ -110,7 +98,7 @@ struct node {
 	int utc_offset_traceable;
 	int leap;
 	int kernel_leap;
-	struct pmc *pmc;
+	struct PtpMgmtClient *pmc;
 	int pmc_ds_requested;
 	uint64_t pmc_last_update;
 	int state_changed;
@@ -928,8 +916,7 @@ static int init_pmc(struct config *cfg, struct node *node)
 {
 	char uds_local[MAX_IFNAME_SIZE + 1];
 
-	snprintf(uds_local, sizeof(uds_local), "/var/run/phc2sys.%d",
-		 getpid());
+	snprintf(uds_local, sizeof(uds_local), "/var/run/phc2sys.%d", getpid());
 	node->pmc = pmc_create(cfg, TRANS_UDS, uds_local, 0,
 			       config_get_int(cfg, NULL, "domainNumber"),
 			       config_get_int(cfg, NULL, "transportSpecific") << 4, 1);
@@ -1128,10 +1115,10 @@ static int run_pmc_port_properties(struct node *node, int timeout,
 
 		*state = ppn->port_state;
 		*tstamping = ppn->timestamping;
-		len = ppn->interface.length;
+		len = ppn->intfTxt.length;
 		if (len > IFNAMSIZ - 1)
 			len = IFNAMSIZ - 1;
-		memcpy(iface, ppn->interface.text, len);
+		memcpy(iface, ppn->intfTxt.text, len);
 		iface[len] = '\0';
 
 		msg_put(msg);

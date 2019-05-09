@@ -35,11 +35,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "print.h"
-#include "rtnl.h"
 #include "sk.h"
 #include "util.h"
-#include "version.h"
 
 #define DEFAULT_RUNDIR "/var/run/timemaster"
 

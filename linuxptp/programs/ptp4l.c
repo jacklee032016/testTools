@@ -24,17 +24,11 @@
 #include <unistd.h>
 
 #include "clock.h"
-#include "config.h"
-#include "ntpshm.h"
-#include "pi.h"
-#include "print.h"
-#include "raw.h"
-#include "sk.h"
-#include "transport.h"
-#include "udp6.h"
-#include "uds.h"
+#include "ptpConfig.h"
+#include "ptpCompact.h"
+#include "ptpProtocol.h"
+#include "ptpImplements.h"
 #include "util.h"
-#include "version.h"
 
 static void usage(char *progname)
 {
@@ -72,9 +66,9 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *config = NULL, *req_phc = NULL, *progname;
-	enum clock_type type = CLOCK_TYPE_ORDINARY;
+	enum CLOCK_TYPE type = CLOCK_TYPE_ORDINARY;
 	int c, err = -1, index, print_level;
-	struct clock *clock = NULL;
+	struct PtpClock *clock = NULL;
 	struct option *opts;
 	struct config *cfg;
 
@@ -197,7 +191,7 @@ int main(int argc, char *argv[])
 		config_set_int(cfg, "sanity_freq_limit", 0);
 	}
 
-	if (STAILQ_EMPTY(&cfg->interfaces)) {
+	if (STAILQ_EMPTY(&cfg->intfs)) {
 		fprintf(stderr, "no interface specified\n");
 		usage(progname);
 		goto out;
@@ -205,39 +199,39 @@ int main(int argc, char *argv[])
 
 	type = config_get_int(cfg, NULL, "clock_type");
 	switch (type) {
-	case CLOCK_TYPE_ORDINARY:
-		if (cfg->n_interfaces > 1) {
-			type = CLOCK_TYPE_BOUNDARY;
-		}
-		break;
-	case CLOCK_TYPE_BOUNDARY:
-		if (cfg->n_interfaces < 2) {
-			fprintf(stderr, "BC needs at least two interfaces\n");
+		case CLOCK_TYPE_ORDINARY:
+			if (cfg->n_interfaces > 1) {
+				type = CLOCK_TYPE_BOUNDARY;
+			}
+			break;
+		case CLOCK_TYPE_BOUNDARY:
+			if (cfg->n_interfaces < 2) {
+				fprintf(stderr, "BC needs at least two interfaces\n");
+				goto out;
+			}
+			break;
+		case CLOCK_TYPE_P2P:
+			if (cfg->n_interfaces < 2) {
+				fprintf(stderr, "TC needs at least two interfaces\n");
+				goto out;
+			}
+			if (DM_P2P != config_get_int(cfg, NULL, "delay_mechanism")) {
+				fprintf(stderr, "P2P_TC needs P2P delay mechanism\n");
+				goto out;
+			}
+			break;
+		case CLOCK_TYPE_E2E:
+			if (cfg->n_interfaces < 2) {
+				fprintf(stderr, "TC needs at least two interfaces\n");
+				goto out;
+			}
+			if (DM_E2E != config_get_int(cfg, NULL, "delay_mechanism")) {
+				fprintf(stderr, "E2E_TC needs E2E delay mechanism\n");
+				goto out;
+			}
+			break;
+		case CLOCK_TYPE_MANAGEMENT:
 			goto out;
-		}
-		break;
-	case CLOCK_TYPE_P2P:
-		if (cfg->n_interfaces < 2) {
-			fprintf(stderr, "TC needs at least two interfaces\n");
-			goto out;
-		}
-		if (DM_P2P != config_get_int(cfg, NULL, "delay_mechanism")) {
-			fprintf(stderr, "P2P_TC needs P2P delay mechanism\n");
-			goto out;
-		}
-		break;
-	case CLOCK_TYPE_E2E:
-		if (cfg->n_interfaces < 2) {
-			fprintf(stderr, "TC needs at least two interfaces\n");
-			goto out;
-		}
-		if (DM_E2E != config_get_int(cfg, NULL, "delay_mechanism")) {
-			fprintf(stderr, "E2E_TC needs E2E delay mechanism\n");
-			goto out;
-		}
-		break;
-	case CLOCK_TYPE_MANAGEMENT:
-		goto out;
 	}
 
 	clock = clock_create(type, cfg, req_phc);

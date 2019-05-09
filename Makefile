@@ -4,7 +4,7 @@ RASPPI:=2
 
 QEMU=YES
 
-NAME=tools
+NAME=testTools
 
 ROOT_DIR:=$(shell pwd)
 RULE_DIR:=$(ROOT_DIR)

@@ -28,7 +28,7 @@
  * @return       Zero on success, or non-zero
  *               if transmission of the ACK message failed.
  */
-int unicast_client_cancel(struct port *p, struct ptp_message *m,
+int unicast_client_cancel(struct PtpPort *p, struct ptp_message *m,
 			  struct tlv_extra *extra);
 
 /**
@@ -37,7 +37,7 @@ int unicast_client_cancel(struct port *p, struct ptp_message *m,
  * @param port   The port in question.
  * @return       Zero on success, non-zero otherwise.
  */
-int unicast_client_claim_table(struct port *port);
+int unicast_client_claim_table(struct PtpPort *port);
 
 /**
  * Tests whether a unicast master table is associated with a given port.
@@ -45,7 +45,7 @@ int unicast_client_claim_table(struct port *port);
  * @return       One (1) if a unicast master table is configured on the port,
  *               or zero otherwise.
  */
-int unicast_client_enabled(struct port *p);
+int unicast_client_enabled(struct PtpPort *p);
 
 /**
  * Handles a GRANT_UNICAST_TRANSMISSION TLV from the grantor.
@@ -53,7 +53,7 @@ int unicast_client_enabled(struct port *p);
  * @param m      The signaling message containing the grant.
  * @param extra  The TLV containing the grant.
  */
-void unicast_client_grant(struct port *p, struct ptp_message *m,
+void unicast_client_grant(struct PtpPort *p, struct ptp_message *m,
 			  struct tlv_extra *extra);
 
 /**
@@ -61,19 +61,19 @@ void unicast_client_grant(struct port *p, struct ptp_message *m,
  * @param p      The port in question.
  * @return       Zero on success, non-zero otherwise.
  */
-int unicast_client_set_tmo(struct port *p);
+int unicast_client_set_tmo(struct PtpPort *p);
 
 /**
  * Notifies the unicast client code that the port state has changed.
  * @param p      The port in question.
  */
-void unicast_client_state_changed(struct port *p);
+void unicast_client_state_changed(struct PtpPort *p);
 
 /**
  * Handles the unicast request timer, sending requests as needed.
  * @param p      The port in question.
  * @return       Zero on success, non-zero otherwise.
  */
-int unicast_client_timer(struct port *p);
+int unicast_client_timer(struct PtpPort *p);
 
 #endif

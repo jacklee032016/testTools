@@ -26,9 +26,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "ptpCompact.h"
 #include "missing.h"
-#include "print.h"
-#include "rtnl.h"
 
 static int rtnl_len;
 static char *rtnl_buf;
@@ -74,6 +73,7 @@ no_info:
 	return err;
 }
 
+/* check kernel support rt netlink */
 int rtnl_link_query(int fd, char *device)
 {
 	struct sockaddr_nl sa;
@@ -189,7 +189,8 @@ int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx)
 	struct rtattr *tb[IFLA_MAX+1];
 
 	index = if_nametoindex(device);
-	if (!rtnl_buf) {
+	if (!rtnl_buf)
+	{
 		rtnl_len = 4096;
 		rtnl_buf = malloc(rtnl_len);
 		if (!rtnl_buf) {
@@ -211,6 +212,7 @@ int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx)
 		pr_err("rtnl: recvmsg: %m");
 		return -1;
 	}
+	
 	if (len > rtnl_len) {
 		free(rtnl_buf);
 		rtnl_len = len;
@@ -224,13 +226,16 @@ int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx)
 	}
 
 	len = recvmsg(fd, &msg, 0);
-	if (len < 1) {
+	if (len < 1)
+	{
 		pr_err("rtnl: recvmsg: %m");
 		return -1;
 	}
+	
 	nh = (struct nlmsghdr *) rtnl_buf;
 
-	for ( ; NLMSG_OK(nh, len); nh = NLMSG_NEXT(nh, len)) {
+	for ( ; NLMSG_OK(nh, len); nh = NLMSG_NEXT(nh, len))
+	{
 		if (nh->nlmsg_type != RTM_NEWLINK)
 			continue;
 
@@ -239,11 +244,9 @@ int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx)
 			continue;
 
 		link_up = info->ifi_flags & IFF_RUNNING ? 1 : 0;
-		pr_debug("interface index %d is %s", index,
-			 link_up ? "up" : "down");
+		pr_debug("interface index %d (%s) is %s", index, device, link_up ? "up" : "down");
 
-		rtnl_rtattr_parse(tb, IFLA_MAX, IFLA_RTA(info),
-				  IFLA_PAYLOAD(nh));
+		rtnl_rtattr_parse(tb, IFLA_MAX, IFLA_RTA(info), IFLA_PAYLOAD(nh));
 
 		if (tb[IFLA_LINKINFO])
 			slave_index = rtnl_linkinfo_parse(tb[IFLA_LINKINFO]);
@@ -265,14 +268,19 @@ int rtnl_open(void)
 	sa.nl_groups = RTNLGRP_LINK;
 
 	fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
-	if (fd < 0) {
+	if (fd < 0)
+	{
 		pr_err("failed to open netlink socket: %m");
 		return -1;
 	}
-	if (bind(fd, (struct sockaddr *) &sa, sizeof(sa))) {
+	
+	if (bind(fd, (struct sockaddr *) &sa, sizeof(sa)))
+	{
 		pr_err("failed to bind netlink socket: %m");
 		close(fd);
 		return -1;
 	}
+	
 	return fd;
 }
+

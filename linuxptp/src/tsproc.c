@@ -20,9 +20,9 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include "tsproc.h"
-#include "filter.h"
-#include "print.h"
+#include "ptpCompact.h"
+#include "tmv.h"
+
 
 struct tsproc {
 	/* Processing options */
@@ -44,7 +44,7 @@ struct tsproc {
 	int filtered_delay_valid;
 
 	/* Delay filter */
-	struct filter *delay_filter;
+	struct PtpFilter *delay_filter;
 };
 
 static int weighting(struct tsproc *tsp)

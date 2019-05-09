@@ -29,7 +29,6 @@
 #include <linux/sockios.h>
 #include <net/if.h>
 
-#include "version.h"
 #include "missing.h"
 
 static void usage(char *progname)

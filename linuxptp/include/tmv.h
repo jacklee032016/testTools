@@ -22,26 +22,8 @@
 
 #include <time.h>
 
-#include "ddt.h"
-#include "pdt.h"
-
 #define NS_PER_SEC 1000000000LL
 
-/**
- * We implement the time value as a 64 bit signed integer containing
- * nanoseconds. Using this representation, we could really spare the
- * arithmetic functions such as @ref tmv_add() and the like, and just
- * use plain old math operators in the code.
- *
- * However, we are going to be a bit pedantic here and enforce the
- * use of the these functions, so that we can easily upgrade the code
- * to a finer representation later on. In that way, we can make use of
- * the fractional nanosecond parts of the correction fields, if and
- * when people start asking for them.
- */
-typedef struct {
-	int64_t ns;
-} tmv_t;
 
 static inline tmv_t tmv_add(tmv_t a, tmv_t b)
 {
@@ -114,9 +96,9 @@ static inline TimeInterval tmv_to_TimeInterval(tmv_t x)
 	return x.ns << 16;
 }
 
-static inline struct Timestamp tmv_to_Timestamp(tmv_t x)
+static inline struct WireTimeStamp tmv_to_Timestamp(tmv_t x)
 {
-	struct Timestamp result;
+	struct WireTimeStamp result;
 	uint64_t sec, nsec;
 
 	sec  = x.ns / 1000000000ULL;
@@ -136,7 +118,7 @@ static inline tmv_t timespec_to_tmv(struct timespec ts)
 	return t;
 }
 
-static inline tmv_t timestamp_to_tmv(struct timestamp ts)
+static inline tmv_t timestamp_to_tmv(struct LocalTimeStamp ts)
 {
 	tmv_t t;
 	t.ns = ts.sec * NS_PER_SEC + ts.nsec;

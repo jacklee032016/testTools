@@ -24,8 +24,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "address.h"
-#include "print.h"
+#include "ptpCompact.h"
+#include "ptpProtocol.h"
+#include "ptpImplements.h"
+
 #include "sk.h"
 #include "util.h"
 
@@ -35,39 +37,144 @@
 
 static int running = 1;
 
-const char *ps_str[] = {
-	"NONE",
-	"INITIALIZING",
-	"FAULTY",
-	"DISABLED",
-	"LISTENING",
-	"PRE_MASTER",
-	"MASTER",
-	"PASSIVE",
-	"UNCALIBRATED",
-	"SLAVE",
-	"GRAND_MASTER",
-};
 
-const char *ev_str[] = {
-	"NONE",
-	"POWERUP",
-	"INITIALIZE",
-	"DESIGNATED_ENABLED",
-	"DESIGNATED_DISABLED",
-	"FAULT_CLEARED",
-	"FAULT_DETECTED",
-	"STATE_DECISION_EVENT",
-	"QUALIFICATION_TIMEOUT_EXPIRES",
-	"ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES",
-	"SYNCHRONIZATION_FAULT",
-	"MASTER_CLOCK_SELECTED",
-	"INIT_COMPLETE",
-	"RS_MASTER",
-	"RS_GRAND_MASTER",
-	"RS_SLAVE",
-	"RS_PASSIVE",
-};
+void ptpMsgDebug(struct ptp_message *m, FILE *fp)
+{
+	fprintf(fp,
+		"\t"
+		"%-10s "
+//		"versionPTP         0x%02X "
+//		"messageLength      %hu "
+//		"domainNumber       %u "
+//		"reserved1          0x%02X "
+//		"flagField          0x%02X%02X "
+//		"correction         %lld "
+//		"reserved2          %u "
+//		"sourcePortIdentity ... "
+		"sequenceId %4hu "
+//		"control            %u "
+//		"logMessageInterval %d "
+		,
+		ptpMsgTypeString(msg_type(m)),
+//		m->header.ver,
+//		m->header.messageLength,
+//		m->header.domainNumber,
+//		m->header.reserved1,
+//		m->header.flagField[0],
+//		m->header.flagField[1],
+//		m->header.correction,
+//		m->header.reserved2,
+//		m->header.sourcePortIdentity,
+		m->header.sequenceId
+//		m->header.control,
+//		m->header.logMessageInterval
+		);
+	
+	fprintf(fp, "\n");
+}
+
+const char *ptpMsgTypeString(int type)
+{
+	switch (type)
+	{
+		case SYNC:
+			return "SYNC";
+		case DELAY_REQ:
+			return "DELAY_REQ";
+		case PDELAY_REQ:
+			return "PDELAY_REQ";
+		case PDELAY_RESP:
+			return "PDELAY_RESP";
+		case FOLLOW_UP:
+			return "FOLLOW_UP";
+		case DELAY_RESP:
+			return "DELAY_RESP";
+		case PDELAY_RESP_FOLLOW_UP:
+			return "PDELAY_RESP_FOLLOW_UP";
+		case ANNOUNCE:
+			return "ANNOUNCE";
+		case SIGNALING:
+			return "SIGNALING";
+		case MANAGEMENT:
+			return "MANAGEMENT";
+	}
+	return "unknown";
+}
+
+const char *ptpPortStateString(int state)
+{
+	switch (state)
+	{
+		case 0:
+			return "NONE";
+		case PS_INITIALIZING:
+			return "INITIALIZING";
+		case PS_FAULTY:
+			return "FAULTY";
+		case PS_DISABLED:
+			return "DISABLED";
+		case PS_LISTENING:
+			return "LISTENING";
+		case PS_PRE_MASTER:
+			return "PRE_MASTER";
+		case PS_MASTER:
+			return "MASTER";
+		case PS_PASSIVE:
+			return "PASSIVE";
+		case PS_UNCALIBRATED:
+			return "UNCALIBRATED";
+		case PS_SLAVE:
+			return "SLAVE";
+		case PS_GRAND_MASTER:
+			return "GRAND_MASTER";
+	}
+	
+	return "unknown";
+}
+
+const char *ptpPortEventString(int event)
+{
+	switch (event)
+	{
+		case EV_NONE:
+			return "NONE";
+		case EV_POWERUP:
+			return "POWERUP";
+		case EV_INITIALIZE:
+			return "INITIALIZE";
+		case EV_DESIGNATED_ENABLED:
+			return "DESIGNATED_ENABLED";
+		case EV_DESIGNATED_DISABLED:
+			return "DESIGNATED_DISABLED";
+		case EV_FAULT_CLEARED:
+			return "FAULT_CLEARED";
+		case EV_FAULT_DETECTED:
+			return "FAULT_DETECTED";
+		case EV_STATE_DECISION_EVENT:
+			return "STATE_DECISION_EVENT";
+		case EV_QUALIFICATION_TIMEOUT_EXPIRES:
+			return "QUALIFICATION_TIMEOUT_EXPIRES";
+		case EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES:
+			return "ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES";
+		case EV_SYNCHRONIZATION_FAULT:
+			return "SYNCHRONIZATION_FAULT";
+		case EV_MASTER_CLOCK_SELECTED:
+			return "MASTER_CLOCK_SELECTED";
+		case EV_INIT_COMPLETE:
+			return "INIT_COMPLETE";
+		case EV_RS_MASTER:
+			return "RS_MASTER";
+		case EV_RS_GRAND_MASTER:
+			return "RS_GRAND_MASTER";
+		case EV_RS_SLAVE:
+			return "RS_SLAVE";
+		case EV_RS_PASSIVE:
+			return "RS_PASSIVE";
+	}
+	
+	return "unknown";
+}
+
 
 int addreq(enum transport_type type, struct address *a, struct address *b)
 {
@@ -120,6 +227,8 @@ char *cid2str(struct ClockIdentity *id)
 {
 	static char buf[64];
 	unsigned char *ptr = id->id;
+
+	memset(buf, 0, sizeof(buf));
 	snprintf(buf, sizeof(buf), "%02x%02x%02x.%02x%02x.%02x%02x%02x",
 		 ptr[0], ptr[1], ptr[2], ptr[3],
 		 ptr[4], ptr[5], ptr[6], ptr[7]);

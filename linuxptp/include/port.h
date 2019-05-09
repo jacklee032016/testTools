@@ -19,30 +19,26 @@
 #ifndef HAVE_PORT_H
 #define HAVE_PORT_H
 
-#include "dm.h"
-#include "fd.h"
-#include "foreign.h"
-#include "fsm.h"
-#include "notification.h"
-#include "transport.h"
+#include "ptpCompact.h"
+#include "ptpProtocol.h"
+#include "ptpImplements.h"
+
+#define	PORT_STR_FORMAT		"PORT#%d: "
 
 /* forward declarations */
-struct interface;
-struct clock;
+struct PtpInterface;
+struct PtpClock;
 
 /** Opaque type. */
-struct port;
+struct PtpPort;
 
-/**
- * Returns the dataset from a port's best foreign clock record, if any
- * has yet been discovered. This function does not bring the returned
- * dataset up to date, so the caller should invoke port_compute_best()
- * beforehand.
- *
- * @param port  A pointer previously obtained via port_open().
- * @return      A pointer to a dataset, or NULL.
- */
-struct dataset *port_best_foreign(struct port *port);
+/* 
+* Naming rule: 
+*     pktPortXXX, name can be used by other module
+*     portXXX, name used in pktPort module itself
+*     _XXX, name for static functions and variables
+*/
+
 
 /**
  * Close a port and free its associated resources. After this call
@@ -50,7 +46,7 @@ struct dataset *port_best_foreign(struct port *port);
  *
  * @param port A pointer previously obtained via port_open().
  */
-void port_close(struct port *port);
+void port_close(struct PtpPort *port);
 
 /**
  * Computes the 'best' foreign master discovered on a port. This has
@@ -60,27 +56,9 @@ void port_close(struct port *port);
  * @param port A pointer previously obtained via port_open().
  * @return A pointer to the port's best foreign master, or NULL.
  */
-struct foreign_clock *port_compute_best(struct port *port);
+struct foreign_clock *port_compute_best(struct PtpPort *port);
 
-/**
- * Dispatch a port event. This may cause a state transition on the
- * port, with the associated side effect.
- *
- * @param port A pointer previously obtained via port_open().
- * @param event One of the @a fsm_event codes.
- * @param mdiff Whether a new master has been selected.
- */
-void port_dispatch(struct port *p, enum fsm_event event, int mdiff);
 
-/**
- * Generates state machine events based on activity on a port's file
- * descriptors.
- *
- * @param port A pointer previously obtained via port_open().
- * @param fd_index The index of the active file descriptor.
- * @return One of the @a fsm_event codes.
- */
-enum fsm_event port_event(struct port *port, int fd_index);
 
 /**
  * Forward a message on a given port.
@@ -88,7 +66,7 @@ enum fsm_event port_event(struct port *port, int fd_index);
  * @param msg     The message to send. Must be in network byte order.
  * @return        Zero on success, non-zero otherwise.
  */
-int port_forward(struct port *p, struct ptp_message *msg);
+int port_forward(struct PtpPort *p, struct ptp_message *msg);
 
 /**
  * Forward a message on a given port to the address stored in the message.
@@ -96,7 +74,7 @@ int port_forward(struct port *p, struct ptp_message *msg);
  * @param msg     The message to send. Must be in network byte order.
  * @return        Zero on success, non-zero otherwise.
  */
-int port_forward_to(struct port *p, struct ptp_message *msg);
+int port_forward_to(struct PtpPort *p, struct ptp_message *msg);
 
 /**
  * Prepare message for transmission and send it to a given port. Note that
@@ -107,29 +85,9 @@ int port_forward_to(struct port *p, struct ptp_message *msg);
  * @param msg      The message to send.
  * @param event    One of the @ref transport_event enumeration values.
  */
-int port_prepare_and_send(struct port *p, struct ptp_message *msg,
+int port_prepare_and_send(struct PtpPort *p, struct ptp_message *msg,
 			  enum transport_event event);
 
-/**
- * Obtain a port's identity.
- * @param p        A pointer previously obtained via port_open().
- * @return         The port identity of 'p'.
- */
-struct PortIdentity port_identity(struct port *p);
-
-/**
- * Obtain a port number.
- * @param p        A port instance.
- * @return         The port number of 'p'.
- */
-int port_number(struct port *p);
-
-/**
- * Obtain the link status of a port.
- * @param p        A port instance.
- * @return         One (1) if the link is up, zero otherwise.
- */
-int port_link_status_get(struct port *p);
 
 /**
  * Manage a port according to a given message.
@@ -139,7 +97,7 @@ int port_link_status_get(struct port *p);
  * @return         1 if the message was responded to, 0 if it did not apply
  *                 to the port, -1 if it was invalid.
  */
-int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg);
+int port_manage(struct PtpPort *p, struct PtpPort *ingress, struct ptp_message *msg);
 
 /**
  * Send a management error status message.
@@ -149,7 +107,7 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg);
  * @param error_id  One of the management error ID values.
  * @return          Zero on success, non-zero otherwise.
  */
-int port_management_error(struct PortIdentity pid, struct port *ingress,
+int port_management_error(struct PortIdentity pid, struct PtpPort *ingress,
 			  struct ptp_message *req, Enumeration16 error_id);
 
 /**
@@ -165,7 +123,7 @@ int port_management_error(struct PortIdentity pid, struct port *ingress,
  * @return         Pointer to a message on success, NULL otherwise.
  */
 struct ptp_message *port_management_reply(struct PortIdentity pid,
-					  struct port *ingress,
+					  struct PtpPort *ingress,
 					  struct ptp_message *req);
 
 /**
@@ -180,7 +138,7 @@ struct ptp_message *port_management_reply(struct PortIdentity pid,
  * @return         Pointer to a message on success, NULL otherwise.
  */
 struct ptp_message *port_management_notify(struct PortIdentity pid,
-					   struct port *port);
+					   struct PtpPort *port);
 
 /**
  * Construct and send notification to subscribers about an event that
@@ -188,7 +146,7 @@ struct ptp_message *port_management_notify(struct PortIdentity pid,
  * @param p        The port.
  * @param event    The identification of the event.
  */
-void port_notify_event(struct port *p, enum notification event);
+void port_notify_event(struct PtpPort *p, enum NOTIFICATION event);
 
 /**
  * Open a network port.
@@ -199,43 +157,23 @@ void port_notify_event(struct port *p, enum notification event);
  * @param clock         A pointer to the system PTP clock.
  * @return A pointer to an open port on success, or NULL otherwise.
  */
-struct port *port_open(int phc_index,
+struct PtpPort *port_open(int phc_index,
 		       enum timestamp_type timestamping,
 		       int number,
-		       struct interface *interface,
-		       struct clock *clock);
+		       struct PtpInterface *interface,
+		       struct PtpClock *clock);
 
-/**
- * Returns a port's current state.
- * @param port  A port instance.
- * @return      One of the @ref port_state values.
- */
-enum port_state port_state(struct port *port);
 
 /**
  * Update a port's current state based on a given event.
  * @param p        A pointer previously obtained via port_open().
- * @param event    One of the @a fsm_event codes.
+ * @param event    One of the @a PORT_EVENT codes.
  * @param mdiff    Whether a new master has been selected.
  * @return         One (1) if the port state has changed, zero otherwise.
  */
-int port_state_update(struct port *p, enum fsm_event event, int mdiff);
+int portStateUpdate(struct PtpPort *p, enum PORT_EVENT event, int mdiff);
 
-/**
- * Return array of file descriptors for this port. The fault fd is not
- * included.
- * @param port	A port instance
- * @return	Array of file descriptors. Unused descriptors are guranteed
- *		to be set to -1.
- */
-struct fdarray *port_fda(struct port *port);
 
-/**
- * Return file descriptor of the port.
- * @param port	A port instance.
- * @return	File descriptor or -1 if not applicable.
- */
-int port_fault_fd(struct port *port);
 
 /**
  * Utility function for setting or resetting a file descriptor timer.
@@ -290,7 +228,7 @@ int set_tmo_lin(int fd, int seconds);
  * @param log_seconds	The exponential factor for the timer.
  * @return		Zero on success, non-zero otherwise.
  */
-int port_set_fault_timer_log(struct port *port,
+int port_set_fault_timer_log(struct PtpPort *port,
 			     unsigned int scale, int log_seconds);
 
 /**
@@ -301,15 +239,8 @@ int port_set_fault_timer_log(struct port *port,
  * @param seconds	The timeout value for the timer.
  * @return		Zero on success, non-zero otherwise.
  */
-int port_set_fault_timer_lin(struct port *port, int seconds);
+int port_set_fault_timer_lin(struct PtpPort *port, int seconds);
 
-/**
- * Returns a port's last fault type.
- *
- * @param port  A port instance.
- * @return      One of the @ref fault_type values.
- */
-enum fault_type last_fault_type(struct port *port);
 
 /**
  * Fills passed in struct fault_interval with the value associated to a
@@ -319,7 +250,7 @@ enum fault_type last_fault_type(struct port *port);
  * @param ft          Fault type.
  * @param i           Pointer to the struct which will be filled in.
  */
-void fault_interval(struct port *port, enum fault_type ft,
+void fault_interval(struct PtpPort *port, enum fault_type ft,
 		    struct fault_interval *i);
 
 /**

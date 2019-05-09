@@ -23,12 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bmc.h"
 #include "clock.h"
-#include "config.h"
-#include "ether.h"
-#include "hash.h"
-#include "print.h"
+#include "ptpConfig.h"
 #include "util.h"
 
 enum config_section {
@@ -684,7 +680,7 @@ int config_read(char *name, struct config *cfg)
 	FILE *fp;
 	char buf[1024], *line, *c;
 	const char *option, *value;
-	struct interface *current_port = NULL;
+	struct PtpInterface *current_port = NULL;
 	int line_num;
 
 	fp = 0 == strncmp(name, "-", 2) ? stdin : fopen(name, "r");
@@ -784,24 +780,24 @@ parse_error:
 	return -2;
 }
 
-struct interface *config_create_interface(char *name, struct config *cfg)
+struct PtpInterface *config_create_interface(char *name, struct config *cfg)
 {
-	struct interface *iface;
+	struct PtpInterface *iface;
 
 	/* only create each interface once (by name) */
-	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
+	STAILQ_FOREACH(iface, &cfg->intfs, list) {
 		if (0 == strncmp(name, iface->name, MAX_IFNAME_SIZE))
 			return iface;
 	}
 
-	iface = calloc(1, sizeof(struct interface));
+	iface = calloc(1, sizeof(struct PtpInterface));
 	if (!iface) {
 		fprintf(stderr, "cannot allocate memory for a port\n");
 		return NULL;
 	}
 
 	strncpy(iface->name, name, MAX_IFNAME_SIZE);
-	STAILQ_INSERT_TAIL(&cfg->interfaces, iface, list);
+	STAILQ_INSERT_TAIL(&cfg->intfs, iface, list);
 	cfg->n_interfaces++;
 
 	return iface;
@@ -818,7 +814,7 @@ struct config *config_create(void)
 	if (!cfg) {
 		return NULL;
 	}
-	STAILQ_INIT(&cfg->interfaces);
+	STAILQ_INIT(&cfg->intfs);
 	STAILQ_INIT(&cfg->unicast_master_tables);
 
 	cfg->opts = config_alloc_longopts();
@@ -867,10 +863,10 @@ void config_destroy(struct config *cfg)
 {
 	struct unicast_master_address *address;
 	struct unicast_master_table *table;
-	struct interface *iface;
+	struct PtpInterface *iface;
 
-	while ((iface = STAILQ_FIRST(&cfg->interfaces))) {
-		STAILQ_REMOVE_HEAD(&cfg->interfaces, list);
+	while ((iface = STAILQ_FIRST(&cfg->intfs))) {
+		STAILQ_REMOVE_HEAD(&cfg->intfs, list);
 		free(iface);
 	}
 	while ((table = STAILQ_FIRST(&cfg->unicast_master_tables))) {

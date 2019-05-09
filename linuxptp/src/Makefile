@@ -17,48 +17,45 @@ C_FLAGS += $(SHARED_CFLAGS) -Wall -DVER=2.0 -D_GNU_SOURCE -DHAVE_CLOCK_ADJTIME -
 PORTABL_SRC += \
 
 SRC += \
-			sysoff.c \
-			pmc_common.c \
-			version.c \
 			util.c \
-			unicast_service.c \
-			unicast_fsm.c \
-			unicast_client.c \
-			uds.c \
-			udp6.c \
-			udp.c \
-			tsproc.c \
-			transport.c \
-			tlv.c \
-			telecom.c \
-			tc.c \
-			stats.c \
 			sk.c \
-			servo.c \
 			rtnl.c \
-			raw.c \
-			p2p_tc.c \
-			print.c \
-			pqueue.c \
-			port_signaling.c \
-			port.c \
-			pi.c \
-			phc.c \
-			nullf.c \
-			ntpshm.c \
+			tsproc.c \
+			pmc_common.c \
+			tlv.c \
+			tc.c \
 			msg.c \
-			mmedian.c \
-			mave.c \
-			linreg.c \
-			hash.c \
-			fsm.c \
-			filter.c \
-			fault.c \
-			e2e_tc.c \
 			config.c \
+			filter.c \
 			clockcheck.c \
 			clockadj.c \
-			clock.c \
+			servo.c \
+			servoLinreg.c \
+			servoPi.c \
+			servoNtpShm.c \
+			ptpPort.c \
+			ptpPortInit.c \
+			ptpPortStates.c \
+			ptpPortMgmt.c \
+			ptpPortMsgMgmt.c \
+			ptpPortMsgOrdinary.c \
+			ptpPortMsgTransp.c \
+			ptpPortDevOrdinary.c \
+			ptpPortDevTransp.c \
+			unicast_service.c \
+			unicast_client.c \
+			ptpClock.c \
+			ptpClockInit.c \
+			ptpClockMgmt.c \
+			ptpClockPoll.c \
+			ptpClockUtils.c \
+			ptpTransport.c \
+			ptpTransRaw.c \
+			ptpTransUdp.c \
+			ptpTransUdp6.c \
+			ptpTransUds.c \
+			ptpUtils.c \
+			ptpSysDeps.c \
 			bmc.c \
 		
  

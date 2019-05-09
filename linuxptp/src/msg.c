@@ -22,10 +22,9 @@
 #include <string.h>
 #include <time.h>
 
-#include "contain.h"
-#include "msg.h"
-#include "print.h"
-#include "tlv.h"
+#include "ptpCompact.h"
+#include "ptpProtocol.h"
+#include "ptpImplements.h"
 
 #define VERSION_MASK 0x0f
 #define VERSION      0x02
@@ -49,18 +48,15 @@ static struct {
 	int count;
 } pool_stats;
 
-#ifdef DEBUG_POOL
 static void pool_debug(const char *str, void *addr)
 {
+#ifdef DEBUG_POOL
 	fprintf(stderr, "*** %p %10s total %d count %d used %d\n",
 		addr, str, pool_stats.total, pool_stats.count,
 		pool_stats.total - pool_stats.count);
-}
 #else
-static void pool_debug(const char *str, void *addr)
-{
-}
 #endif
+}
 
 static void announce_pre_send(struct announce_msg *m)
 {
@@ -101,27 +97,28 @@ static int hdr_pre_send(struct ptp_header *m)
 static uint8_t *msg_suffix(struct ptp_message *m)
 {
 	switch (msg_type(m)) {
-	case SYNC:
-		return NULL;
-	case DELAY_REQ:
-		return m->delay_req.suffix;
-	case PDELAY_REQ:
-		return NULL;
-	case PDELAY_RESP:
-		return NULL;
-	case FOLLOW_UP:
-		return m->follow_up.suffix;
-	case DELAY_RESP:
-		return m->delay_resp.suffix;
-	case PDELAY_RESP_FOLLOW_UP:
-		return m->pdelay_resp_fup.suffix;
-	case ANNOUNCE:
-		return m->announce.suffix;
-	case SIGNALING:
-		return m->signaling.suffix;
-	case MANAGEMENT:
-		return m->management.suffix;
+		case SYNC:
+			return NULL;
+		case DELAY_REQ:
+			return m->delay_req.suffix;
+		case PDELAY_REQ:
+			return NULL;
+		case PDELAY_RESP:
+			return NULL;
+		case FOLLOW_UP:
+			return m->follow_up.suffix;
+		case DELAY_RESP:
+			return m->delay_resp.suffix;
+		case PDELAY_RESP_FOLLOW_UP:
+			return m->pdelay_resp_fup.suffix;
+		case ANNOUNCE:
+			return m->announce.suffix;
+		case SIGNALING:
+			return m->signaling.suffix;
+		case MANAGEMENT:
+			return m->management.suffix;
 	}
+	
 	return NULL;
 }
 
@@ -133,7 +130,7 @@ static struct tlv_extra *msg_tlv_prepare(struct ptp_message *msg, int length)
 	/* Make sure this message type admits appended TLVs. */
 	ptr = msg_suffix(msg);
 	if (!ptr) {
-		pr_err("TLV on %s not allowed", msg_type_string(msg_type(msg)));
+		pr_err("TLV on %s not allowed", ptpMsgTypeString(msg_type(msg)));
 		return NULL;
 	}
 	tmp = TAILQ_LAST(&msg->tlv_list, tlv_list);
@@ -236,7 +233,7 @@ static void suffix_pre_send(struct ptp_message *msg)
 	msg_tlv_recycle(msg);
 }
 
-static void timestamp_post_recv(struct ptp_message *m, struct Timestamp *ts)
+static void timestamp_post_recv(struct ptp_message *m, struct WireTimeStamp *ts)
 {
 	uint32_t lsb = ntohl(ts->seconds_lsb);
 	uint16_t msb = ntohs(ts->seconds_msb);
@@ -245,7 +242,7 @@ static void timestamp_post_recv(struct ptp_message *m, struct Timestamp *ts)
 	m->ts.pdu.nsec = ntohl(ts->nanoseconds);
 }
 
-static void timestamp_pre_send(struct Timestamp *ts)
+static void timestamp_pre_send(struct WireTimeStamp *ts)
 {
 	ts->seconds_lsb = htonl(ts->seconds_lsb);
 	ts->seconds_msb = htons(ts->seconds_msb);
@@ -294,6 +291,7 @@ void msg_cleanup(void)
 	}
 }
 
+/* used in E2E and P2P clock */
 struct ptp_message *msg_duplicate(struct ptp_message *msg, int cnt)
 {
 	struct ptp_message *dup;
@@ -307,7 +305,7 @@ struct ptp_message *msg_duplicate(struct ptp_message *msg, int cnt)
 	dup->refcnt = 1;
 	TAILQ_INIT(&dup->tlv_list);
 
-	err = msg_post_recv(dup, cnt);
+	err = ptpMsgReceive(dup, cnt);
 	if (err) {
 		switch (err) {
 		case -EBADMSG:
@@ -322,7 +320,7 @@ struct ptp_message *msg_duplicate(struct ptp_message *msg, int cnt)
 	}
 	if (msg_sots_missing(msg)) {
 		pr_err("msg_duplicate: received %s without timestamp",
-		       msg_type_string(msg_type(msg)));
+		       ptpMsgTypeString(msg_type(msg)));
 		msg_put(dup);
 		return NULL;
 	}
@@ -335,7 +333,7 @@ void msg_get(struct ptp_message *m)
 	m->refcnt++;
 }
 
-int msg_post_recv(struct ptp_message *m, int cnt)
+int ptpMsgReceive(struct ptp_message *m, int cnt)
 {
 	int pdulen, type, err;
 
@@ -386,40 +384,43 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 	if (cnt < pdulen)
 		return -EBADMSG;
 
-	switch (type) {
-	case SYNC:
-		timestamp_post_recv(m, &m->sync.originTimestamp);
-		break;
-	case DELAY_REQ:
-		break;
-	case PDELAY_REQ:
-		break;
-	case PDELAY_RESP:
-		timestamp_post_recv(m, &m->pdelay_resp.requestReceiptTimestamp);
-		port_id_post_recv(&m->pdelay_resp.requestingPortIdentity);
-		break;
-	case FOLLOW_UP:
-		timestamp_post_recv(m, &m->follow_up.preciseOriginTimestamp);
-		break;
-	case DELAY_RESP:
-		timestamp_post_recv(m, &m->delay_resp.receiveTimestamp);
-		port_id_post_recv(&m->delay_resp.requestingPortIdentity);
-		break;
-	case PDELAY_RESP_FOLLOW_UP:
-		timestamp_post_recv(m, &m->pdelay_resp_fup.responseOriginTimestamp);
-		port_id_post_recv(&m->pdelay_resp_fup.requestingPortIdentity);
-		break;
-	case ANNOUNCE:
-		clock_gettime(CLOCK_MONOTONIC, &m->ts.host);
-		timestamp_post_recv(m, &m->announce.originTimestamp);
-		announce_post_recv(&m->announce);
-		break;
-	case SIGNALING:
-		port_id_post_recv(&m->signaling.targetPortIdentity);
-		break;
-	case MANAGEMENT:
-		port_id_post_recv(&m->management.targetPortIdentity);
-		break;
+	pr_info("Receiving MSG %s with length %d", ptpMsgTypeString(type), pdulen );
+	
+	switch (type)
+	{
+		case SYNC:
+			timestamp_post_recv(m, &m->sync.originTimestamp);
+			break;
+		case DELAY_REQ:
+			break;
+		case PDELAY_REQ:
+			break;
+		case PDELAY_RESP:
+			timestamp_post_recv(m, &m->pdelay_resp.requestReceiptTimestamp);
+			port_id_post_recv(&m->pdelay_resp.requestingPortIdentity);
+			break;
+		case FOLLOW_UP:
+			timestamp_post_recv(m, &m->follow_up.preciseOriginTimestamp);
+			break;
+		case DELAY_RESP:
+			timestamp_post_recv(m, &m->delay_resp.receiveTimestamp);
+			port_id_post_recv(&m->delay_resp.requestingPortIdentity);
+			break;
+		case PDELAY_RESP_FOLLOW_UP:
+			timestamp_post_recv(m, &m->pdelay_resp_fup.responseOriginTimestamp);
+			port_id_post_recv(&m->pdelay_resp_fup.requestingPortIdentity);
+			break;
+		case ANNOUNCE:
+			clock_gettime(CLOCK_MONOTONIC, &m->ts.host);
+			timestamp_post_recv(m, &m->announce.originTimestamp);
+			announce_post_recv(&m->announce);
+			break;
+		case SIGNALING:
+			port_id_post_recv(&m->signaling.targetPortIdentity);
+			break;
+		case MANAGEMENT:
+			port_id_post_recv(&m->management.targetPortIdentity);
+			break;
 	}
 
 	err = suffix_post_recv(m, cnt - pdulen);
@@ -508,67 +509,6 @@ int msg_tlv_count(struct ptp_message *msg)
 	return count;
 }
 
-const char *msg_type_string(int type)
-{
-	switch (type) {
-	case SYNC:
-		return "SYNC";
-	case DELAY_REQ:
-		return "DELAY_REQ";
-	case PDELAY_REQ:
-		return "PDELAY_REQ";
-	case PDELAY_RESP:
-		return "PDELAY_RESP";
-	case FOLLOW_UP:
-		return "FOLLOW_UP";
-	case DELAY_RESP:
-		return "DELAY_RESP";
-	case PDELAY_RESP_FOLLOW_UP:
-		return "PDELAY_RESP_FOLLOW_UP";
-	case ANNOUNCE:
-		return "ANNOUNCE";
-	case SIGNALING:
-		return "SIGNALING";
-	case MANAGEMENT:
-		return "MANAGEMENT";
-	}
-	return "unknown";
-}
-
-void msg_print(struct ptp_message *m, FILE *fp)
-{
-	fprintf(fp,
-		"\t"
-		"%-10s "
-//		"versionPTP         0x%02X "
-//		"messageLength      %hu "
-//		"domainNumber       %u "
-//		"reserved1          0x%02X "
-//		"flagField          0x%02X%02X "
-//		"correction         %lld "
-//		"reserved2          %u "
-//		"sourcePortIdentity ... "
-		"sequenceId %4hu "
-//		"control            %u "
-//		"logMessageInterval %d "
-		,
-		msg_type_string(msg_type(m)),
-//		m->header.ver,
-//		m->header.messageLength,
-//		m->header.domainNumber,
-//		m->header.reserved1,
-//		m->header.flagField[0],
-//		m->header.flagField[1],
-//		m->header.correction,
-//		m->header.reserved2,
-//		m->header.sourcePortIdentity,
-		m->header.sequenceId
-//		m->header.control,
-//		m->header.logMessageInterval
-		);
-	fprintf(fp, "\n");
-}
-
 void msg_put(struct ptp_message *m)
 {
 	m->refcnt--;
@@ -590,6 +530,7 @@ int msg_sots_missing(struct ptp_message *m)
 	case PDELAY_REQ:
 	case PDELAY_RESP:
 		break;
+		
 	case FOLLOW_UP:
 	case DELAY_RESP:
 	case PDELAY_RESP_FOLLOW_UP:
@@ -601,3 +542,4 @@ int msg_sots_missing(struct ptp_message *m)
 	}
 	return msg_sots_valid(m) ? 0 : 1;
 }
+

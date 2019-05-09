@@ -17,11 +17,18 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335 USA.
  */
 #include <stdlib.h>
+#include <sys/queue.h>
+
+//#include "ptpCompact.h"
+//#include "ptpProtocol.h"
+//#include "ptpImplements.h"
 
 #include "port.h"
-#include "print.h"
-#include "tc.h"
+#include "clock.h"
 #include "tmv.h"
+
+#include "portPrivate.h"
+#include "clockPrivate.h"
 
 enum tc_match {
 	TC_MISMATCH,
@@ -51,9 +58,9 @@ static struct tc_txd *tc_allocate(void)
 	return txd;
 }
 
-static int tc_blocked(struct port *q, struct port *p, struct ptp_message *m)
+static int tc_blocked(struct PtpPort *q, struct PtpPort *p, struct ptp_message *m)
 {
-	enum port_state s;
+	enum PORT_STATE s;
 
 	if (q == p) {
 		return 1;
@@ -69,7 +76,7 @@ static int tc_blocked(struct port *q, struct port *p, struct ptp_message *m)
 		return 0;
 	}
 	/* Ingress state */
-	s = port_state(q);
+	s = portState(q);
 	switch (s) {
 	case PS_INITIALIZING:
 	case PS_FAULTY:
@@ -90,7 +97,7 @@ static int tc_blocked(struct port *q, struct port *p, struct ptp_message *m)
 		break;
 	}
 	/* Egress state */
-	s = port_state(p);
+	s = portState(p);
 	switch (s) {
 	case PS_INITIALIZING:
 	case PS_FAULTY:
@@ -117,7 +124,7 @@ static int tc_blocked(struct port *q, struct port *p, struct ptp_message *m)
 	return 0;
 }
 
-static void tc_complete_request(struct port *q, struct port *p,
+static void tc_complete_request(struct PtpPort *q, struct PtpPort *p,
 				struct ptp_message *req, tmv_t residence)
 {
 	struct tc_txd *txd = tc_allocate();
@@ -137,7 +144,7 @@ static void tc_complete_request(struct port *q, struct port *p,
 	TAILQ_INSERT_TAIL(&p->tc_transmitted, txd, list);
 }
 
-static void tc_complete_response(struct port *q, struct port *p,
+static void tc_complete_response(struct PtpPort *q, struct PtpPort *p,
 				 struct ptp_message *resp, tmv_t residence)
 {
 	enum tc_match type = TC_MISMATCH;
@@ -162,6 +169,7 @@ static void tc_complete_response(struct port *q, struct port *p,
 	c1 = net2host64(resp->header.correction);
 	c2 = c1 + tmv_to_TimeInterval(residence);
 	resp->header.correction = host2net64(c2);
+	
 	cnt = transport_send(p->trp, &p->fda, TRANS_GENERAL, resp);
 	if (cnt <= 0) {
 		pr_err("tc failed to forward response on port %d", portnum(p));
@@ -174,7 +182,7 @@ static void tc_complete_response(struct port *q, struct port *p,
 	tc_recycle(txd);
 }
 
-static void tc_complete_syfup(struct port *q, struct port *p,
+static void tc_complete_syfup(struct PtpPort *q, struct PtpPort *p,
 			      struct ptp_message *msg, tmv_t residence)
 {
 	enum tc_match type = TC_MISMATCH;
@@ -235,7 +243,7 @@ static void tc_complete_syfup(struct port *q, struct port *p,
 	tc_recycle(txd);
 }
 
-static void tc_complete(struct port *q, struct port *p,
+static void tc_complete(struct PtpPort *q, struct PtpPort *p,
 			struct ptp_message *msg, tmv_t residence)
 {
 	switch (msg_type(msg)) {
@@ -263,10 +271,10 @@ static int tc_current(struct ptp_message *m, struct timespec now)
 	return t2 - t1 < tmo;
 }
 
-static int tc_fwd_event(struct port *q, struct ptp_message *msg)
+static int tc_fwd_event(struct PtpPort *q, struct ptp_message *msg)
 {
 	tmv_t egress, ingress = msg->hwts.ts, residence;
-	struct port *p;
+	struct PtpPort *p;
 	int cnt, err;
 	double rr;
 
@@ -369,7 +377,7 @@ void tc_cleanup(void)
 	}
 }
 
-void tc_flush(struct port *q)
+void tc_flush(struct PtpPort *q)
 {
 	struct tc_txd *txd;
 
@@ -380,10 +388,10 @@ void tc_flush(struct port *q)
 	}
 }
 
-int tc_forward(struct port *q, struct ptp_message *msg)
+int tc_forward(struct PtpPort *q, struct ptp_message *msg)
 {
 	uint16_t steps_removed;
-	struct port *p;
+	struct PtpPort *p;
 	int cnt;
 
 	if (q->tc_spanning_tree && msg_type(msg) == ANNOUNCE) {
@@ -405,9 +413,9 @@ int tc_forward(struct port *q, struct ptp_message *msg)
 	return 0;
 }
 
-int tc_fwd_folup(struct port *q, struct ptp_message *msg)
+int tc_fwd_folup(struct PtpPort *q, struct ptp_message *msg)
 {
-	struct port *p;
+	struct PtpPort *p;
 
 	clock_gettime(CLOCK_MONOTONIC, &msg->ts.host);
 
@@ -420,14 +428,14 @@ int tc_fwd_folup(struct port *q, struct ptp_message *msg)
 	return 0;
 }
 
-int tc_fwd_request(struct port *q, struct ptp_message *msg)
+int tc_fwd_request(struct PtpPort *q, struct ptp_message *msg)
 {
 	return tc_fwd_event(q, msg);
 }
 
-int tc_fwd_response(struct port *q, struct ptp_message *msg)
+int tc_fwd_response(struct PtpPort *q, struct ptp_message *msg)
 {
-	struct port *p;
+	struct PtpPort *p;
 
 	clock_gettime(CLOCK_MONOTONIC, &msg->ts.host);
 
@@ -440,7 +448,7 @@ int tc_fwd_response(struct port *q, struct ptp_message *msg)
 	return 0;
 }
 
-int tc_fwd_sync(struct port *q, struct ptp_message *msg)
+int tc_fwd_sync(struct PtpPort *q, struct ptp_message *msg)
 {
 	struct ptp_message *fup = NULL;
 	int err;
@@ -472,7 +480,7 @@ int tc_fwd_sync(struct port *q, struct ptp_message *msg)
 	return err;
 }
 
-int tc_ignore(struct port *p, struct ptp_message *m)
+int tc_ignore(struct PtpPort *p, struct ptp_message *m)
 {
 	struct ClockIdentity c1, c2;
 
@@ -496,7 +504,7 @@ int tc_ignore(struct port *p, struct ptp_message *m)
 	return 0;
 }
 
-void tc_prune(struct port *q)
+void tc_prune(struct PtpPort *q)
 {
 	struct timespec now;
 	struct tc_txd *txd;

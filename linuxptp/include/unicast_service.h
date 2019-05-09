@@ -20,7 +20,7 @@
 #ifndef HAVE_UNICAST_SERVICE_H
 #define HAVE_UNICAST_SERVICE_H
 
-struct port;
+struct PtpPort;
 struct ptp_message;
 struct tlv_extra;
 
@@ -35,14 +35,14 @@ struct tlv_extra;
  * @param extra  The TLV containing the request.
  * @return       SERVICE_GRANTED, SERVICE_DENIED, or SERVICE_DISABLED.
  */
-int unicast_service_add(struct port *p, struct ptp_message *m,
+int unicast_service_add(struct PtpPort *p, struct ptp_message *m,
 			struct tlv_extra *extra);
 
 /**
  * Frees all of the resources associated with a port's unicast service.
  * @param p      The port in question.
  */
-void unicast_service_cleanup(struct port *p);
+void unicast_service_cleanup(struct PtpPort *p);
 
 /**
  * Responds to a unicast service request with a denial.
@@ -51,7 +51,7 @@ void unicast_service_cleanup(struct port *p);
  * @param extra  The TLV containing the request.
  * @return       Zero on success, non-zero otherwise.
  */
-int unicast_service_deny(struct port *p, struct ptp_message *m,
+int unicast_service_deny(struct PtpPort *p, struct ptp_message *m,
 			 struct tlv_extra *extra);
 
 /**
@@ -61,7 +61,7 @@ int unicast_service_deny(struct port *p, struct ptp_message *m,
  * @param extra  The TLV containing the request.
  * @return       Zero on success, non-zero otherwise.
  */
-int unicast_service_grant(struct port *p, struct ptp_message *m,
+int unicast_service_grant(struct PtpPort *p, struct ptp_message *m,
 			  struct tlv_extra *extra);
 
 /**
@@ -69,7 +69,7 @@ int unicast_service_grant(struct port *p, struct ptp_message *m,
  * @param p      The port in question.
  * @return       Zero on success, non-zero otherwise.
  */
-int unicast_service_initialize(struct port *p);
+int unicast_service_initialize(struct PtpPort *p);
 
 /**
  * Handle a unicast service cancellation.
@@ -77,7 +77,7 @@ int unicast_service_initialize(struct port *p);
  * @param m      The signaling message containing the cancellation.
  * @param extra  The TLV containing the cancellation.
  */
-void unicast_service_remove(struct port *p, struct ptp_message *m,
+void unicast_service_remove(struct PtpPort *p, struct ptp_message *m,
 			    struct tlv_extra *extra);
 
 /**
@@ -85,6 +85,6 @@ void unicast_service_remove(struct port *p, struct ptp_message *m,
  * @param p      The port in question.
  * @return       Zero on success, non-zero otherwise.
  */
-int unicast_service_timer(struct port *p);
+int unicast_service_timer(struct PtpPort *p);
 
 #endif

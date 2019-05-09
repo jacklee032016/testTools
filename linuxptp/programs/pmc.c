@@ -26,16 +26,13 @@
 #include <inttypes.h>
 #include <arpa/inet.h>
 
-#include "ds.h"
-#include "fsm.h"
-#include "pmc_common.h"
-#include "print.h"
-#include "tlv.h"
-#include "uds.h"
+#include "ptpCompact.h"
+#include "ptpProtocol.h"
+#include "ptpImplements.h"
 #include "util.h"
-#include "version.h"
+#include "ptpConfig.h"
 
-static struct pmc *pmc;
+static struct PtpMgmtClient *pmc;
 
 #define IFMT "\n\t\t"
 
@@ -308,7 +305,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "delayMechanism          %hhu"
 			IFMT "logMinPdelayReqInterval %hhd"
 			IFMT "versionNumber           %hhu",
-			pid2str(&p->portIdentity), ps_str[p->portState],
+			pid2str(&p->portIdentity), ptpPortStateString(p->portState),
 			p->logMinDelayReqInterval, p->peerMeanPathDelay >> 16,
 			p->logAnnounceInterval, p->announceReceiptTimeout,
 			p->logSyncInterval, p->delayMechanism,

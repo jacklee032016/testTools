@@ -20,8 +20,9 @@
 #ifndef HAVE_SK_H
 #define HAVE_SK_H
 
-#include "address.h"
-#include "transport.h"
+#include "ptpCompact.h"
+#include "ptpProtocol.h"
+#include "ptpImplements.h"
 
 /**
  * Contains timestamping information returned by the GET_TS_INFO ioctl.
