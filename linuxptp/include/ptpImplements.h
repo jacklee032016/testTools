@@ -419,38 +419,6 @@ struct unicast_master_table {
 };
 
 
-/** Opaque type */
-struct PtpFilter;
-
-
-/**
- * Create a new instance of a filter.
- * @param type    The type of the filter to create.
- * @param length  The filter's length.
- * @return A pointer to a new filter on success, NULL otherwise.
- */
-struct PtpFilter *filter_create(enum filter_type type, int length);
-
-/**
- * Destroy an instance of a filter.
- * @param filter Pointer to a filter obtained via @ref filter_create().
- */
-void filter_destroy(struct PtpFilter *filter);
-
-/**
- * Feed a sample into a filter.
- * @param filter    Pointer to a filter obtained via @ref filter_create().
- * @param sample    The input sample.
- * @return The output value.
- */
-tmv_t filter_sample(struct PtpFilter *filter, tmv_t sample);
-
-/**
- * Reset a filter.
- * @param filter   Pointer to a filter obtained via @ref filter_create().
- */
-void filter_reset(struct PtpFilter *filter);
-
 #include <time.h>
 #include <inttypes.h>
 

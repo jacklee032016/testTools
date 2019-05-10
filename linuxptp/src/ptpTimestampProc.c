@@ -1,6 +1,6 @@
 /**
- * @file filter.c
- * @note Copyright (C) 2013 Miroslav Lichvar <mlichvar@redhat.com>
+ * @file tsproc.c
+ * @note Copyright (C) 2015 Miroslav Lichvar <mlichvar@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,11 +18,19 @@
  */
 
 #include <stdlib.h>
-#include <string.h>
+#include <inttypes.h>
 
 #include "ptpCompact.h"
 #include "tmv.h"
-#include "filterPrivate.h"
+
+struct PtpFilter
+{
+	void (*destroy)(struct PtpFilter *filter);
+
+	tmv_t (*sample)(struct PtpFilter *filter, tmv_t sample);
+
+	void (*reset)(struct PtpFilter *filter);
+};
 
 /* Implements a moving median */
 struct mmedian {
@@ -179,15 +187,22 @@ struct PtpFilter *_maveCreate(int length)
 
 struct PtpFilter *filter_create(enum filter_type type, int length)
 {
-	switch (type) {
+	switch (type)
+	{
 		case FILTER_MOVING_AVERAGE:
+			pr_debug("Filter MovingAverage is created");
 			return _maveCreate(length);
+			
 		case FILTER_MOVING_MEDIAN:
+			pr_debug("Filter MovingMedia is created");
 			return _mmedianCreate(length);
+			
 		default:
+			pr_err("Filter is invalidate type: %d", type);
 			return NULL;
 	}
 }
+
 
 void filter_destroy(struct PtpFilter *filter)
 {
@@ -202,5 +217,183 @@ tmv_t filter_sample(struct PtpFilter *filter, tmv_t sample)
 void filter_reset(struct PtpFilter *filter)
 {
 	filter->reset(filter);
+}
+
+
+
+static int _isWeighting(struct TimestampProcess *tsp)
+{
+	switch (tsp->mode)
+	{
+		case TSPROC_FILTER:
+		case TSPROC_RAW:
+			return 0;
+
+		case TSPROC_FILTER_WEIGHT:
+		case TSPROC_RAW_WEIGHT:
+			return 1;
+	}
+	return 0;
+}
+
+struct TimestampProcess *tsproc_create(enum tsproc_mode mode,
+			     enum filter_type delay_filter, int filter_length)
+{
+	struct TimestampProcess *tsp;
+
+	tsp = calloc(1, sizeof(*tsp));
+	if (!tsp)
+		return NULL;
+
+	switch (mode) {
+		case TSPROC_FILTER:
+		case TSPROC_RAW:
+		case TSPROC_FILTER_WEIGHT:
+		case TSPROC_RAW_WEIGHT:
+			tsp->mode = mode;
+			break;
+		default:
+			free(tsp);
+			return NULL;
+	}
+
+	tsp->delay_filter = filter_create(delay_filter, filter_length);
+	if (!tsp->delay_filter) {
+		free(tsp);
+		return NULL;
+	}
+
+	tsp->clock_rate_ratio = 1.0;
+
+	return tsp;
+}
+
+
+
+static tmv_t _getRawDelay(struct TimestampProcess *tsp)
+{
+	tmv_t t23, t41, delay;
+
+	/* delay = ((t2 - t3) * rr + (t4 - t1)) / 2 */
+
+	t23 = tmv_sub(tsp->t2, tsp->t3);
+	if (tsp->clock_rate_ratio != 1.0)
+		t23 = dbl_tmv(tmv_dbl(t23) * tsp->clock_rate_ratio);
+	t41 = tmv_sub(tsp->t4, tsp->t1);
+	delay = tmv_div(tmv_add(t23, t41), 2);
+
+	if (tmv_sign(delay) < 0)
+	{
+		pr_debug("negative delay %10" PRId64, tmv_to_nanoseconds(delay));
+		pr_debug("delay = (t2 - t3) * rr + (t4 - t1)");
+		pr_debug("t2 - t3 = %+10" PRId64, tmv_to_nanoseconds(t23));
+		pr_debug("t4 - t1 = %+10" PRId64, tmv_to_nanoseconds(t41));
+		pr_debug("rr = %.9f", tsp->clock_rate_ratio);
+	}
+
+	return delay;
+}
+
+
+/* calculate path delay after  delay_resp or pdelay_resp is received */
+int tsproc_update_delay(struct TimestampProcess *tsp, tmv_t *delay)
+{
+	tmv_t raw_delay;
+
+	if (tmv_is_zero(tsp->t2) || tmv_is_zero(tsp->t3))
+		return -1;
+
+	raw_delay = _getRawDelay(tsp);
+	tsp->filtered_delay = filter_sample(tsp->delay_filter, raw_delay);
+	tsp->filtered_delay_valid = 1;
+
+	pr_debug("delay   filtered %10" PRId64 "   raw %10" PRId64,
+		 tmv_to_nanoseconds(tsp->filtered_delay),
+		 tmv_to_nanoseconds(raw_delay));
+
+	if (!delay)
+	{
+		return 0;
+	}
+
+	switch (tsp->mode) {
+		case TSPROC_FILTER:
+		case TSPROC_FILTER_WEIGHT:
+			*delay = tsp->filtered_delay;
+			break;
+			
+		case TSPROC_RAW:
+		case TSPROC_RAW_WEIGHT:
+			*delay = raw_delay;
+			break;
+	}
+
+	return 0;
+}
+
+int tsproc_update_offset(struct TimestampProcess *tsp, tmv_t *offset, double *weight)
+{
+	tmv_t delay = tmv_zero(), raw_delay = tmv_zero();
+
+	if (tmv_is_zero(tsp->t1) || tmv_is_zero(tsp->t2))
+		return -1;
+
+	switch (tsp->mode)
+	{
+		case TSPROC_FILTER:
+			if (!tsp->filtered_delay_valid) {
+				return -1;
+			}
+			delay = tsp->filtered_delay;
+			break;
+		case TSPROC_RAW:
+		case TSPROC_RAW_WEIGHT:
+			if (tmv_is_zero(tsp->t3)) {
+				return -1;
+			}
+			raw_delay = _getRawDelay(tsp);
+			delay = raw_delay;
+			break;
+			
+		case TSPROC_FILTER_WEIGHT:
+			if (tmv_is_zero(tsp->t3) || !tsp->filtered_delay_valid) {
+				return -1;
+			}
+			raw_delay = _getRawDelay(tsp);
+			delay = tsp->filtered_delay;
+			break;
+	}
+
+	/* offset = t2 - t1 - delay */
+	*offset = tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay);
+
+	if (!weight)
+		return 0;
+
+	if (_isWeighting(tsp) && tmv_sign(tsp->filtered_delay) > 0 && tmv_sign(raw_delay) > 0)
+	{
+		*weight = tmv_dbl(tsp->filtered_delay) / tmv_dbl(raw_delay);
+		if (*weight > 1.0)
+			*weight = 1.0;
+	}
+	else {
+		*weight = 1.0;
+	}
+
+	return 0;
+}
+
+void tsproc_reset(struct TimestampProcess *tsp, int full)
+{
+	tsp->t1 = tmv_zero();
+	tsp->t2 = tmv_zero();
+	tsp->t3 = tmv_zero();
+	tsp->t4 = tmv_zero();
+
+	if (full) {
+		tsp->clock_rate_ratio = 1.0;
+		filter_reset(tsp->delay_filter);
+		tsp->filtered_delay_valid = 0;
+	}
 }
 

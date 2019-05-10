@@ -449,7 +449,8 @@ err:
 	msg_put(msg);
 }
 
-void clock_path_delay(struct PtpClock *c, tmv_t req, tmv_t rx)
+/* update path delay after delay_resp is received */
+void ptpClockPathDelay(struct PtpClock *c, tmv_t req, tmv_t rx)
 {
 	tsproc_up_ts(c->tsproc, req, rx);
 
@@ -512,7 +513,7 @@ int clock_switch_phc(struct PtpClock *c, int phc_index)
 	return 0;
 }
 
-enum servo_state clock_synchronize(struct PtpClock *c, tmv_t ingress, tmv_t origin)
+enum servo_state ptpClockSynchronize(struct PtpClock *c, tmv_t ingress, tmv_t origin)
 {
 	double adj, weight;
 	enum servo_state state = SERVO_UNLOCKED;
@@ -621,7 +622,4 @@ double clock_rate_ratio(struct PtpClock *c)
 	}
 	return servo_rate_ratio(c->servo);
 }
-
-//#include "ptpClockMgmt.c"
-//#include "ptpClockPoll.c"
 

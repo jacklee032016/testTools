@@ -141,7 +141,7 @@ void clock_notify_event(struct PtpClock *c, enum NOTIFICATION event);
  *                    as reported in the delay response message, including
  *                    correction.
  */
-void clock_path_delay(struct PtpClock *c, tmv_t req, tmv_t rx);
+void ptpClockPathDelay(struct PtpClock *c, tmv_t req, tmv_t rx);
 
 /**
  * Provide the estimated peer delay from a slave port.
@@ -183,7 +183,7 @@ int clock_switch_phc(struct PtpClock *c, int phc_index);
  *                     Pass zero in the case of one step operation.
  * @return             The state of the clock's servo.
  */
-enum servo_state clock_synchronize(struct PtpClock *c, tmv_t ingress, tmv_t origin);
+enum servo_state ptpClockSynchronize(struct PtpClock *c, tmv_t ingress, tmv_t origin);
 
 /**
  * Inform a slaved clock about the master's sync interval.

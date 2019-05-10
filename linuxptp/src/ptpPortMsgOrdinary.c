@@ -193,10 +193,7 @@ static int port_set_sync_rx_tmo(struct PtpPort *p)
 }
 
 
-static void __portSynchronize(struct PtpPort *p,
-			     tmv_t ingress_ts,
-			     struct LocalTimeStamp origin_ts,
-			     Integer64 correction1, Integer64 correction2)
+static void __portSynchronize(struct PtpPort *p, tmv_t ingress_ts, struct LocalTimeStamp origin_ts, Integer64 correction1, Integer64 correction2)
 {
 	enum servo_state state;
 	tmv_t t1, t1c, t2, c1, c2;
@@ -209,22 +206,23 @@ static void __portSynchronize(struct PtpPort *p,
 	c2 = correction_to_tmv(correction2);
 	t1c = tmv_add(t1, tmv_add(c1, c2));
 
-	state = clock_synchronize(p->clock, t2, t1c);
-	switch (state) {
-	case SERVO_UNLOCKED:
-		port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
-		break;
-	case SERVO_JUMP:
-		port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
-		flush_delay_req(p);
-		if (p->peer_delay_req) {
-			msg_put(p->peer_delay_req);
-			p->peer_delay_req = NULL;
-		}
-		break;
-	case SERVO_LOCKED:
-		port_dispatch(p, EV_MASTER_CLOCK_SELECTED, 0);
-		break;
+	state = ptpClockSynchronize(p->clock, t2, t1c);
+	switch (state)
+	{
+		case SERVO_UNLOCKED:
+			port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
+			break;
+		case SERVO_JUMP:
+			port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
+			flush_delay_req(p);
+			if (p->peer_delay_req) {
+				msg_put(p->peer_delay_req);
+				p->peer_delay_req = NULL;
+			}
+			break;
+		case SERVO_LOCKED:
+			port_dispatch(p, EV_MASTER_CLOCK_SELECTED, 0);
+			break;
 	}
 }
 
@@ -235,82 +233,85 @@ static void __portSynchronize(struct PtpPort *p,
  * they can arrive on two different ports. In addition, time
  * stamping in PHY devices might delay the event packets.
  */
-static void port_syfufsm(struct PtpPort *p, enum syfu_event event,
-			 struct ptp_message *m)
+static void port_syfufsm(struct PtpPort *p, enum syfu_event event, struct ptp_message *m)
 {
 	struct ptp_message *syn, *fup;
 
-	switch (p->syfu) {
-	case SF_EMPTY:
-		switch (event) {
-		case SYNC_MISMATCH:
-			msg_get(m);
-			p->last_syncfup = m;
-			p->syfu = SF_HAVE_SYNC;
+	switch (p->syfu)
+	{
+		case SF_EMPTY:
+			switch (event)
+			{
+				case SYNC_MISMATCH:
+					msg_get(m);
+					p->last_syncfup = m;
+					p->syfu = SF_HAVE_SYNC;
+					break;
+				case FUP_MISMATCH:
+					msg_get(m);
+					p->last_syncfup = m;
+					p->syfu = SF_HAVE_FUP;
+					break;
+				case SYNC_MATCH:
+					break;
+				case FUP_MATCH:
+					break;
+			}
 			break;
-		case FUP_MISMATCH:
-			msg_get(m);
-			p->last_syncfup = m;
-			p->syfu = SF_HAVE_FUP;
-			break;
-		case SYNC_MATCH:
-			break;
-		case FUP_MATCH:
-			break;
-		}
-		break;
 
-	case SF_HAVE_SYNC:
-		switch (event) {
-		case SYNC_MISMATCH:
-			msg_put(p->last_syncfup);
-			msg_get(m);
-			p->last_syncfup = m;
+		case SF_HAVE_SYNC:
+			switch (event)
+			{
+				case SYNC_MISMATCH:
+					msg_put(p->last_syncfup);
+					msg_get(m);
+					p->last_syncfup = m;
+					break;
+				case SYNC_MATCH:
+					break;
+				case FUP_MISMATCH:
+					msg_put(p->last_syncfup);
+					msg_get(m);
+					p->last_syncfup = m;
+					p->syfu = SF_HAVE_FUP;
+					break;
+				case FUP_MATCH:
+					syn = p->last_syncfup;
+					__portSynchronize(p, syn->hwts.ts, m->ts.pdu,
+							 syn->header.correction,
+							 m->header.correction);
+					msg_put(p->last_syncfup);
+					p->syfu = SF_EMPTY;
+					break;
+			}
 			break;
-		case SYNC_MATCH:
-			break;
-		case FUP_MISMATCH:
-			msg_put(p->last_syncfup);
-			msg_get(m);
-			p->last_syncfup = m;
-			p->syfu = SF_HAVE_FUP;
-			break;
-		case FUP_MATCH:
-			syn = p->last_syncfup;
-			__portSynchronize(p, syn->hwts.ts, m->ts.pdu,
-					 syn->header.correction,
-					 m->header.correction);
-			msg_put(p->last_syncfup);
-			p->syfu = SF_EMPTY;
-			break;
-		}
-		break;
 
-	case SF_HAVE_FUP:
-		switch (event) {
-		case SYNC_MISMATCH:
-			msg_put(p->last_syncfup);
-			msg_get(m);
-			p->last_syncfup = m;
-			p->syfu = SF_HAVE_SYNC;
+		case SF_HAVE_FUP:
+			switch (event)
+			{
+				case SYNC_MISMATCH:
+					msg_put(p->last_syncfup);
+					msg_get(m);
+					p->last_syncfup = m;
+					p->syfu = SF_HAVE_SYNC;
+					break;
+				case SYNC_MATCH:
+					fup = p->last_syncfup;
+					__portSynchronize(p, m->hwts.ts, fup->ts.pdu,
+							 m->header.correction,
+							 fup->header.correction);
+					msg_put(p->last_syncfup);
+					p->syfu = SF_EMPTY;
+					break;
+				case FUP_MISMATCH:
+					msg_put(p->last_syncfup);
+					msg_get(m);
+					p->last_syncfup = m;
+					break;
+				case FUP_MATCH:
+					break;
+			}
 			break;
-		case SYNC_MATCH:
-			fup = p->last_syncfup;
-			__portSynchronize(p, m->hwts.ts, fup->ts.pdu,
-					 m->header.correction,
-					 fup->header.correction);
-			msg_put(p->last_syncfup);
-			p->syfu = SF_EMPTY;
-			break;
-		case FUP_MISMATCH:
-			msg_put(p->last_syncfup);
-			msg_get(m);
-			p->last_syncfup = m;
-			break;
-		case FUP_MATCH:
-			break;
-		}
-		break;
 	}
 }
 
@@ -319,24 +320,26 @@ void portMsgProSync(struct PtpPort *p, struct ptp_message *m)
 	enum syfu_event event;
 	struct PortIdentity master;
 	
-	switch (p->state) {
-	case PS_INITIALIZING:
-	case PS_FAULTY:
-	case PS_DISABLED:
-	case PS_LISTENING:
-	case PS_PRE_MASTER:
-	case PS_MASTER:
-	case PS_GRAND_MASTER:
-	case PS_PASSIVE:
-		return;
-		
-	case PS_UNCALIBRATED:
-	case PS_SLAVE:
-		break;
+	switch (p->state)
+	{
+		case PS_INITIALIZING:
+		case PS_FAULTY:
+		case PS_DISABLED:
+		case PS_LISTENING:
+		case PS_PRE_MASTER:
+		case PS_MASTER:
+		case PS_GRAND_MASTER:
+		case PS_PASSIVE:
+			return;
+			
+		case PS_UNCALIBRATED:
+		case PS_SLAVE:
+			break;
 	}
 	
 	master = clock_parent_identity(p->clock);
-	if (!pid_eq(&master, &m->header.sourcePortIdentity)) {
+	if (!pid_eq(&master, &m->header.sourcePortIdentity))
+	{
 		return;
 	}
 
@@ -348,7 +351,8 @@ void portMsgProSync(struct PtpPort *p, struct ptp_message *m)
 
 	m->header.correction += p->asymmetry;
 
-	if (one_step(m)) {
+	if (one_step(m))
+	{
 		__portSynchronize(p, m->hwts.ts, m->ts.pdu, m->header.correction, 0);
 		flush_last_sync(p);
 		return;
@@ -363,6 +367,7 @@ void portMsgProSync(struct PtpPort *p, struct ptp_message *m)
 	{
 		event = SYNC_MISMATCH;
 	}
+	
 	port_syfufsm(p, event, m);
 }
 
@@ -633,7 +638,7 @@ void portMsgProDelayResp(struct PtpPort *p, struct ptp_message *m)
 	t4 = timestamp_to_tmv(m->ts.pdu);
 	t4c = tmv_sub(t4, c3);
 
-	clock_path_delay(p->clock, t3, t4c);
+	ptpClockPathDelay(p->clock, t3, t4c);
 
 	TAILQ_REMOVE(&p->delay_req, req, list);
 	msg_put(req);

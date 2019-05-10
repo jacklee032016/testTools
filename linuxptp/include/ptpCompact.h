@@ -303,9 +303,35 @@ enum tsproc_mode {
 };
 
 /** Opaque type */
-struct tsproc;
+struct TimestampProcess;
 
+/** Opaque type */
+struct PtpFilter;
 
+/* process timestamp of t1, t2, t3, and t4, with Filter (Moving Average or Moving Media) */
+struct TimestampProcess
+{
+	/* Processing options */
+	enum tsproc_mode mode;
+
+	/* Current ratio between remote and local clock frequency */
+	double clock_rate_ratio;
+
+	/* Latest down measurement */
+	tmv_t t1;
+	tmv_t t2;
+
+	/* Latest up measurement */
+	tmv_t t3;
+	tmv_t t4;
+
+	/* Current filtered delay */
+	tmv_t filtered_delay;
+	int filtered_delay_valid;
+
+	/* Delay filter */
+	struct PtpFilter *delay_filter;
+};
 
 /**
  * Create a new instance of the time stamp processor.
@@ -314,14 +340,20 @@ struct tsproc;
  * @param filter_length  Length of the filter.
  * @return               A pointer to a new tsproc on success, NULL otherwise.
  */
-struct tsproc *tsproc_create(enum tsproc_mode mode,
+struct TimestampProcess *tsproc_create(enum tsproc_mode mode,
 			     enum filter_type delay_filter, int filter_length);
 
+#if 0
 /**
  * Destroy a time stamp processor.
  * @param tsp       Pointer obtained via @ref tsproc_create().
  */
-void tsproc_destroy(struct tsproc *tsp);
+void tsproc_destroy(struct TimestampProcess *tsp);
+void tsproc_destroy(struct TimestampProcess *tsp)
+{
+	filter_destroy(tsp->delay_filter);
+	free(tsp);
+}
 
 /**
  * Feed a downstream measurement into a time stamp processor.
@@ -329,7 +361,12 @@ void tsproc_destroy(struct tsproc *tsp);
  * @param remote_ts The remote transmission time.
  * @param local_ts  The local reception time.
  */
-void tsproc_down_ts(struct tsproc *tsp, tmv_t remote_ts, tmv_t local_ts);
+void tsproc_down_ts(struct TimestampProcess *tsp, tmv_t remote_ts, tmv_t local_ts);
+void tsproc_down_ts(struct TimestampProcess *tsp, tmv_t remote_ts, tmv_t local_ts)
+{
+	tsp->t1 = remote_ts;
+	tsp->t2 = local_ts;
+}
 
 /**
  * Feed an upstream measurement into a time stamp processor.
@@ -337,14 +374,23 @@ void tsproc_down_ts(struct tsproc *tsp, tmv_t remote_ts, tmv_t local_ts);
  * @param local_ts  The local transmission time.
  * @param remote_ts The remote reception time.
  */
-void tsproc_up_ts(struct tsproc *tsp, tmv_t local_ts, tmv_t remote_ts);
+void tsproc_up_ts(struct TimestampProcess *tsp, tmv_t local_ts, tmv_t remote_ts);
+void tsproc_up_ts(struct TimestampProcess *tsp, tmv_t local_ts, tmv_t remote_ts)
+{
+	tsp->t3 = local_ts;
+	tsp->t4 = remote_ts;
+}
 
 /**
  * Set ratio between remote and local clock frequencies.
  * @param tsp               Pointer obtained via @ref tsproc_create().
  * @param clock_rate_ratio  The ratio between frequencies.
  */
-void tsproc_set_clock_rate_ratio(struct tsproc *tsp, double clock_rate_ratio);
+void tsproc_set_clock_rate_ratio(struct TimestampProcess *tsp, double clock_rate_ratio);
+void tsproc_set_clock_rate_ratio(struct TimestampProcess *tsp, double clock_rate_ratio)
+{
+	tsp->clock_rate_ratio = clock_rate_ratio;
+}
 
 /**
  * Set delay in a time stamp processor. This can be used to override the last
@@ -352,7 +398,31 @@ void tsproc_set_clock_rate_ratio(struct tsproc *tsp, double clock_rate_ratio);
  * @param tsp    Pointer obtained via @ref tsproc_create().
  * @param delay  The new delay.
  */
-void tsproc_set_delay(struct tsproc *tsp, tmv_t delay);
+void tsproc_set_delay(struct TimestampProcess *tsp, tmv_t delay);
+void tsproc_set_delay(struct TimestampProcess *tsp, tmv_t delay)
+{
+	tsp->filtered_delay = delay;
+	tsp->filtered_delay_valid = 1;
+}
+
+#else
+#define tsproc_destroy(tsp)	\
+		do{	filter_destroy((tsp)->delay_filter); free((tsp));}while(0)
+
+#define	tsproc_down_ts(tsp, remote_ts, local_ts)	\
+	do{ (tsp)->t1 = (remote_ts); (tsp)->t2 = (local_ts);}while(0)
+
+#define	tsproc_up_ts(tsp, local_ts, remote_ts)	\
+	do{ (tsp)->t3 = (local_ts);  (tsp)->t4 = (remote_ts);}while(0)
+
+#define tsproc_set_clock_rate_ratio(tsp, _clock_rate_ratio)	\
+		(tsp)->clock_rate_ratio = (_clock_rate_ratio)
+
+#define	tsproc_set_delay(tsp, delay)	\
+	do{ (tsp)->filtered_delay = (delay);	(tsp)->filtered_delay_valid = 1;}while(0)
+
+
+#endif
 
 /**
  * Update delay in a time stamp processor using new measurements.
@@ -360,7 +430,7 @@ void tsproc_set_delay(struct tsproc *tsp, tmv_t delay);
  * @param delay  A pointer to store the new delay, may be NULL.
  * @return       0 on success, -1 when missing a measurement.
  */
-int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay);
+int tsproc_update_delay(struct TimestampProcess *tsp, tmv_t *delay);
 
 /**
  * Update offset in a time stamp processor using new measurements.
@@ -369,7 +439,7 @@ int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay);
  * @param weight A pointer to store the weight of the sample, may be NULL.
  * @return       0 on success, -1 when missing a measurement.
  */
-int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight);
+int tsproc_update_offset(struct TimestampProcess *tsp, tmv_t *offset, double *weight);
 
 /**
  * Reset a time stamp processor.
@@ -377,7 +447,7 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight);
  * @param full   0 to reset stored measurements (e.g. after clock was stepped),
  *               1 to reset everything (e.g. when remote clock changed).
  */
-void tsproc_reset(struct tsproc *tsp, int full);
+void tsproc_reset(struct TimestampProcess *tsp, int full);
 
 
 #include <syslog.h>

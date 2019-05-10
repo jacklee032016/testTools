@@ -9,16 +9,20 @@
 #define PTP_VERSION 2
 
 /* Values for the messageType field */
-#define SYNC                  0x0
-#define DELAY_REQ             0x1
-#define PDELAY_REQ            0x2
-#define PDELAY_RESP           0x3
-#define FOLLOW_UP             0x8
-#define DELAY_RESP            0x9
-#define PDELAY_RESP_FOLLOW_UP 0xA
-#define ANNOUNCE              0xB
-#define SIGNALING             0xC
-#define MANAGEMENT            0xD
+/* EVENT message, accurate timestamp is required for them */
+#define SYNC							0x0
+#define DELAY_REQ					0x1
+#define PDELAY_REQ					0x2
+#define PDELAY_RESP					0x3
+
+/* GENERAL message, not accurate timestamp */
+#define FOLLOW_UP					0x8
+#define DELAY_RESP					0x9
+#define PDELAY_RESP_FOLLOW_UP		0xA
+#define ANNOUNCE					0xB
+#define SIGNALING					0xC
+#define MANAGEMENT					0xD
+
 
 /* Bits for flagField[0] */
 #define ALT_MASTER     (1<<0)

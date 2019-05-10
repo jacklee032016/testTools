@@ -27,7 +27,7 @@
 
 #define NSEC2SEC 1000000000LL
 
-enum syfu_state {
+enum SyncFollowupState {
 	SF_EMPTY,
 	SF_HAVE_SYNC,
 	SF_HAVE_FUP,
@@ -74,9 +74,9 @@ struct PtpPort
 	enum PORT_EVENT (*event)(struct PtpPort *p, int fd_index);
 
 	int jbod;
-	struct foreign_clock *best;
-	enum syfu_state syfu;
-	struct ptp_message *last_syncfup;
+	struct foreign_clock			*best;
+	enum SyncFollowupState		syfu;
+	struct ptp_message			*last_syncfup;
 
 	/* peer delay messages, only used in transparent clock  */
 	struct ptp_message *peer_delay_req;
@@ -95,7 +95,7 @@ struct PtpPort
 	
 	tmv_t	peer_delay;
 
-	struct tsproc *tsproc;
+	struct TimestampProcess *tsproc;
 	int log_sync_interval;
 	struct nrate_estimator nrate;
 	unsigned int pdr_missing;

@@ -228,8 +228,7 @@ calc:
 	if (p->follow_up_info)
 		port_nrate_calculate(p, t3c, t4);
 
-	tsproc_set_clock_rate_ratio(p->tsproc, p->nrate.ratio *
-				    clock_rate_ratio(p->clock));
+	tsproc_set_clock_rate_ratio(p->tsproc, p->nrate.ratio*clock_rate_ratio(p->clock) );
 	tsproc_up_ts(p->tsproc, t1, t2);
 	tsproc_down_ts(p->tsproc, t3c, t4);
 	if (tsproc_update_delay(p->tsproc, &p->peer_delay))

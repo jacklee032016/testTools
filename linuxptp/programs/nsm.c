@@ -36,7 +36,7 @@ struct nsm {
 	struct config		*cfg;
 	struct fdarray		fda;
 	struct transport	*trp;
-	struct tsproc		*tsproc;
+	struct TimestampProcess		*tsproc;
 	struct ptp_message	*nsm_delay_req;
 	struct ptp_message	*nsm_delay_resp;
 	struct ptp_message	*nsm_sync;
@@ -80,7 +80,7 @@ static int nsm_complete(struct nsm *nsm)
 	return (nsm->nsm_delay_resp && nsm->nsm_fup) ? 1 : 0;
 }
 
-static int64_t nsm_compute_offset(struct tsproc *tsp,
+static int64_t nsm_compute_offset(struct TimestampProcess *tsp,
 				  struct ptp_message *syn,
 				  struct ptp_message *fup,
 				  struct ptp_message *req,

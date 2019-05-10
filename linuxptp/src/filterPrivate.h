@@ -19,14 +19,5 @@
 #ifndef HAVE_FILTER_PRIVATE_H
 #define HAVE_FILTER_PRIVATE_H
 
-#include "tmv.h"
-
-struct PtpFilter {
-	void (*destroy)(struct PtpFilter *filter);
-
-	tmv_t (*sample)(struct PtpFilter *filter, tmv_t sample);
-
-	void (*reset)(struct PtpFilter *filter);
-};
 
 #endif

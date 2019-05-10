@@ -20,13 +20,11 @@ SRC += \
 			util.c \
 			sk.c \
 			rtnl.c \
-			tsproc.c \
 			pmc_common.c \
 			tlv.c \
 			tc.c \
 			msg.c \
 			config.c \
-			filter.c \
 			clockcheck.c \
 			clockadj.c \
 			servo.c \
@@ -56,6 +54,7 @@ SRC += \
 			ptpTransUds.c \
 			ptpUtils.c \
 			ptpSysDeps.c \
+			ptpTimestampProc.c \
 			bmc.c \
 		
  

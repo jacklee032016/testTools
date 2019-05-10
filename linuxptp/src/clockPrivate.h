@@ -85,11 +85,11 @@ struct PtpClock
 	enum timestamp_type timestamping;
 
 	tmv_t master_offset;
-	tmv_t path_delay;
+	tmv_t	path_delay;	/* delay from t1,t2,t3 and t4*/
 	tmv_t ingress_ts;
 	tmv_t initial_delay;
 
-	struct tsproc *tsproc;		/* timestamp process options */
+	struct TimestampProcess *tsproc;		/* timestamp process options */
 	struct freq_estimator fest;
 	struct time_status_np status;
 
