@@ -18,8 +18,7 @@ SRC:= \
 LOCAL_ALL := \
 		timestamping \
 		hwstampConfig \
-
-#		txtimestamp \
+		txtimestamp \
 		
 
 include $(ROOT_DIR)/Makefile.post

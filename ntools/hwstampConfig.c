@@ -27,8 +27,7 @@ static int lookup_value(const char **names, int size, const char *name)
 	return -1;
 }
 
-static const char *
-lookup_name(const char **names, int size, int value)
+static const char *lookup_name(const char **names, int size, int value)
 {
 	return (value >= 0 && value < size) ? names[value] : NULL;
 }

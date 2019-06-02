@@ -10,7 +10,7 @@ ROOT_DIR:=$(shell pwd)
 RULE_DIR:=$(ROOT_DIR)
 #/../
 
-ARCH=arm
+# ARCH=arm
 
 export ROOT_DIR
 export RULE_DIR
@@ -34,10 +34,10 @@ export RELEASES_NAME
 
 
 # SUBDIRS += ptpd/src
-SUBDIRS += linuxptp/src
-SUBDIRS += linuxptp/programs
+# SUBDIRS += linuxptp/src
+# SUBDIRS += linuxptp/programs
 
-# SUBDIRS += ntools
+ SUBDIRS += ntools
 # SUBDIRS += omtools
 
 

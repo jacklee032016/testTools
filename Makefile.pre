@@ -1,6 +1,6 @@
 #
 
-ARCH=linux
+# ARCH=linux
 
 ifeq ($(strip $(RASPPI)),1)
 # both -mtune=arm1176jzf-s or -mcpu=arm1176jzf-s can be used
@@ -24,8 +24,8 @@ endif
 ifeq ($(ARCH),arm)
 #	C_FLAGS += -D__ARM_CMN__=1 -DARCH_ARM=1  -DARCH_X86=0 -DARCH_X86_32=0 
 #	CXXFLAGS = -D__ARM_CMN__=1 -DARCH_ARM=1  -DARCH_X86=0 -DARCH_X86_32=0 
-	CROSS_COMPILER=arm-gcc49-linux-gnueabi-
-	CROSS_COMPILER=arm-none-eabi-
+#	CROSS_COMPILER=arm-gcc49-linux-gnueabi-
+#	CROSS_COMPILER=arm-none-eabi-
 	LDFLAGS+=  
 	flag=
 #	C_FLAGS +=-DARM
@@ -37,16 +37,16 @@ else
 endif
 
 
-CC	= $(CROSS_COMPILER)gcc
-CXX 	= $(CROSS_COMPILER)g++ 
-STRIP	= $(CROSS_COMPILER)strip
-LD	= $(CROSS_COMPILER)ld
-RANLIB 	= $(CROSS_COMPILER)ranlib
-STRIP 	= $(CROSS_COMPILER)strip
-AR 	= $(CROSS_COMPILER)ar
-OBJCOPY 	= $(CROSS_COMPILER)objcopy
+#CC	= $(CROSS_COMPILER)gcc
+#CXX 	= $(CROSS_COMPILER)g++ 
+#STRIP	= $(CROSS_COMPILER)strip
+#LD	= $(CROSS_COMPILER)ld
+#RANLIB 	= $(CROSS_COMPILER)ranlib
+#STRIP 	= $(CROSS_COMPILER)strip
+#AR 	= $(CROSS_COMPILER)ar
+#OBJCOPY 	= $(CROSS_COMPILER)objcopy
 
-ASM 	= $(CROSS_COMPILER)as
+#ASM 	= $(CROSS_COMPILER)as
 #ASM = yasm
 
 RM	= rm -r -f
