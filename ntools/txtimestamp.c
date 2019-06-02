@@ -30,7 +30,9 @@
  * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#ifndef	_GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <arpa/inet.h>
 #include <asm/types.h>
@@ -407,7 +409,9 @@ static void __attribute__((noreturn)) usage(const char *filepath)
 static void parse_opt(int argc, char **argv)
 {
 	int proto_count = 0;
-	char c;
+
+//	char c;	/* char can be -1, only be 0xff. JL. 06.02, 2019 */
+	int c;
 
 	while ((c = getopt(argc, argv, "46hIl:np:rRux")) != -1) {
 		switch (c) {
@@ -449,6 +453,7 @@ static void parse_opt(int argc, char **argv)
 			break;
 		case 'h':
 		default:
+			fprintf(stderr, "argv: '0x%x(%c)'\n", c, c);
 			usage(argv[0]);
 		}
 	}
@@ -530,7 +535,10 @@ const char *sock_names[] = { NULL, "TCP", "UDP", "RAW" };
 int main(int argc, char **argv)
 {
 	if (argc == 1)
+	{
+		fprintf(stderr, "argc:  1\n");
 		usage(argv[0]);
+	}
 
 	parse_opt(argc, argv);
 	resolve_hostname(argv[argc - 1]);
