@@ -26,7 +26,7 @@
 #include <time.h>
 #include <sys/syscall.h>
 #include <sys/timex.h>
-#include <unistd.h>
+#include <unistd.h>	/* include asm/unistd.h, which defines syscall. JL */
 
 #ifndef ADJ_TAI
 #define ADJ_TAI 0x0080

@@ -174,7 +174,11 @@ struct cmd_t {
 };
 
 static cmd_func_t get_command_function(const char *name);
-static inline int name_is_a_command(const char *name);
+
+static inline int name_is_a_command(const char *name)
+{
+	return get_command_function(name) != NULL;
+}
 
 static int do_set(clockid_t clkid, int cmdc, char *cmdv[])
 {
@@ -188,7 +192,8 @@ static int do_set(clockid_t clkid, int cmdc, char *cmdv[])
 
 	/* if we have no more arguments, or the next argument is the ";"
 	 * separator, then we run set as default parameter mode */
-	if (cmdc < 1 || name_is_a_command(cmdv[0])) {
+	if (cmdc < 1 || name_is_a_command(cmdv[0]))
+	{
 		clock_gettime(CLOCK_REALTIME, &ts);
 
 		/* since we aren't using the options, we can simply ensure
@@ -237,14 +242,14 @@ static int do_get(clockid_t clkid, int cmdc, char *cmdv[])
 	struct timespec ts;
 
 	memset(&ts, 0, sizeof(ts));
-	if (clock_gettime(clkid, &ts)) {
-		pr_err("get: failed to get clock time: %s",
-			strerror(errno));
-
+	if (clock_gettime(clkid, &ts))
+	{
+		pr_err("get: failed to get clock time: %s", strerror(errno));
 		return -1;
-	} else {
-		pr_notice("clock time is %ld.%09lu or %s",
-			ts.tv_sec, ts.tv_nsec, ctime(&ts.tv_sec));
+	}
+	else
+	{
+		pr_notice("clock time is %ld.%09lu or %s", ts.tv_sec, ts.tv_nsec, ctime(&ts.tv_sec));
 	}
 
 	/* get operation does not require any arguments */
@@ -257,7 +262,8 @@ static int do_adj(clockid_t clkid, int cmdc, char *cmdv[])
 	int64_t nsecs;
 	enum parser_result r;
 
-	if (cmdc < 1 || name_is_a_command(cmdv[0])) {
+	if (cmdc < 1 || name_is_a_command(cmdv[0]))
+	{
 		pr_err("adj: missing required time argument");
 		return -2;
 	}
@@ -265,17 +271,17 @@ static int do_adj(clockid_t clkid, int cmdc, char *cmdv[])
 	/* parse the double time offset argument */
 	r = get_ranged_double(cmdv[0], &time_arg, -DBL_MAX, DBL_MAX);
 	switch (r) {
-	case PARSED_OK:
-		break;
-	case MALFORMED:
-		pr_err("adj: '%s' is not a valid double", cmdv[0]);
-		return -2;
-	case OUT_OF_RANGE:
-		pr_err("adj: '%s' is out of range.", cmdv[0]);
-		return -2;
-	default:
-		pr_err("adj: couldn't process '%s'", cmdv[0]);
-		return -2;
+		case PARSED_OK:
+			break;
+		case MALFORMED:
+			pr_err("adj: '%s' is not a valid double", cmdv[0]);
+			return -2;
+		case OUT_OF_RANGE:
+			pr_err("adj: '%s' is out of range.", cmdv[0]);
+			return -2;
+		default:
+			pr_err("adj: couldn't process '%s'", cmdv[0]);
+			return -2;
 	}
 
 	nsecs = (int64_t)(NSEC2SEC * time_arg);
@@ -363,11 +369,9 @@ static int do_cmp(clockid_t clkid, int cmdc, char *cmdv[])
 	int64_t sys_offset, delay = 0, offset;
 	uint64_t sys_ts;
 
-	if (SYSOFF_SUPPORTED ==
-	    sysoff_measure(CLOCKID_TO_FD(clkid),
-			   9, &sys_offset, &sys_ts, &delay)) {
-		pr_notice( "offset from CLOCK_REALTIME is %"PRId64"ns\n",
-			sys_offset);
+	if (SYSOFF_SUPPORTED == sysoff_measure(CLOCKID_TO_FD(clkid), 9, &sys_offset, &sys_ts, &delay))
+	{
+		pr_notice( "offset from CLOCK_REALTIME is %"PRId64"ns\n", sys_offset);
 		return 0;
 	}
 
@@ -376,15 +380,14 @@ static int do_cmp(clockid_t clkid, int cmdc, char *cmdv[])
 	memset(&ts, 0, sizeof(rtb));
 	if (clock_gettime(CLOCK_REALTIME, &rta) ||
 	    clock_gettime(clkid, &ts) ||
-	    clock_gettime(CLOCK_REALTIME, &rtb)) {
-		pr_err("cmp: failed clock reads: %s\n",
-			strerror(errno));
+	    clock_gettime(CLOCK_REALTIME, &rtb))
+	{
+		pr_err("cmp: failed clock reads: %s\n", strerror(errno));
 		return -1;
 	}
 
 	offset = calculate_offset(&rta, &ts, &rtb);
-	pr_notice( "offset from CLOCK_REALTIME is approximately %"PRId64"ns\n",
-		offset);
+	pr_notice( "offset from CLOCK_REALTIME is approximately %"PRId64"ns\n", offset);
 
 	return 0;
 }
@@ -396,7 +399,8 @@ static int do_wait(clockid_t clkid, int cmdc, char *cmdv[])
 	struct itimerval timer;
 	enum parser_result r;
 
-	if (cmdc < 1 || name_is_a_command(cmdv[0])) {
+	if (cmdc < 1 || name_is_a_command(cmdv[0]))
+	{
 		pr_err("wait: requires sleep duration argument\n");
 		return -2;
 	}
@@ -459,10 +463,6 @@ static cmd_func_t get_command_function(const char *name)
 	return cmd;
 }
 
-static inline int name_is_a_command(const char *name)
-{
-	return get_command_function(name) != NULL;
-}
 
 static int run_cmds(clockid_t clkid, int cmdc, char *cmdv[])
 {

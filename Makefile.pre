@@ -22,7 +22,7 @@ endif
 
 
 ifeq ($(ARCH),arm)
-#	C_FLAGS += -D__ARM_CMN__=1 -DARCH_ARM=1  -DARCH_X86=0 -DARCH_X86_32=0 
+C_FLAGS += -fPIC 
 #	CXXFLAGS = -D__ARM_CMN__=1 -DARCH_ARM=1  -DARCH_X86=0 -DARCH_X86_32=0 
 #	CROSS_COMPILER=arm-gcc49-linux-gnueabi-
 #	CROSS_COMPILER=arm-none-eabi-
