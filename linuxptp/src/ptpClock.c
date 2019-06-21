@@ -544,40 +544,42 @@ enum servo_state ptpClockSynchronize(struct PtpClock *c, tmv_t ingress, tmv_t or
 			   tmv_to_nanoseconds(ingress), weight, &state);
 	c->servo_state = state;
 
-	if (c->stats.max_count > 1) {
+	if (c->stats.max_count > 1)
+	{
 		clock_stats_update(&c->stats, tmv_dbl(c->master_offset), adj);
-	} else {
-		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
-			"path delay %9" PRId64,
-			tmv_to_nanoseconds(c->master_offset), state, adj,
-			tmv_to_nanoseconds(c->path_delay));
+	}
+	else
+	{
+		pr_info("master offset %10" PRId64 " s%d freq %+7.0f path delay %9" PRId64,
+			tmv_to_nanoseconds(c->master_offset), state, adj, tmv_to_nanoseconds(c->path_delay));
 	}
 
 	tsproc_set_clock_rate_ratio(c->tsproc, clock_rate_ratio(c));
 
-	switch (state) {
-	case SERVO_UNLOCKED:
-		break;
-	case SERVO_JUMP:
-		clockadj_set_freq(c->clkid, -adj);
-		clockadj_step(c->clkid, -tmv_to_nanoseconds(c->master_offset));
-		c->ingress_ts = tmv_zero();
-		if (c->sanity_check) {
-			clockcheck_set_freq(c->sanity_check, -adj);
-			clockcheck_step(c->sanity_check,
-					-tmv_to_nanoseconds(c->master_offset));
-		}
-		tsproc_reset(c->tsproc, 0);
-		break;
-	case SERVO_LOCKED:
-		clockadj_set_freq(c->clkid, -adj);
-		if (c->clkid == CLOCK_REALTIME) {
-			sysclk_set_sync();
-		}
-		if (c->sanity_check) {
-			clockcheck_set_freq(c->sanity_check, -adj);
-		}
-		break;
+	switch (state)
+	{
+		case SERVO_UNLOCKED:
+			break;
+		case SERVO_JUMP:
+			clockadj_set_freq(c->clkid, -adj);
+			clockadj_step(c->clkid, -tmv_to_nanoseconds(c->master_offset));
+			c->ingress_ts = tmv_zero();
+			if (c->sanity_check) {
+				clockcheck_set_freq(c->sanity_check, -adj);
+				clockcheck_step(c->sanity_check,
+						-tmv_to_nanoseconds(c->master_offset));
+			}
+			tsproc_reset(c->tsproc, 0);
+			break;
+		case SERVO_LOCKED:
+			clockadj_set_freq(c->clkid, -adj);
+			if (c->clkid == CLOCK_REALTIME) {
+				sysclk_set_sync();
+			}
+			if (c->sanity_check) {
+				clockcheck_set_freq(c->sanity_check, -adj);
+			}
+			break;
 	}
 	return state;
 }

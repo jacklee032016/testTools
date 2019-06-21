@@ -135,7 +135,7 @@ long waittmr(int tfd, int timeo)
 
 int main(int ac, char **av)
 {
-	int i, tfd, tfd2;
+	int i, tfd, tfd2, tfd3;
 	long ticks;
 	unsigned long long tnow, ttmr;
 	u_int64_t uticks;
@@ -165,6 +165,19 @@ int main(int ac, char **av)
 		}
 		fprintf(stdout, "timerfd = %d\n", tfd);
 
+		if ((tfd2 = timerfd_create(clks[i].id, 0)) == -1) {
+			perror("timerfd2");
+			return 1;
+		}
+		fprintf(stdout, "timerfd2 = %d\n", tfd2);
+
+		if ((tfd3 = timerfd_create(clks[i].id, 0)) == -1) {
+			perror("timerfd3");
+			return 1;
+		}
+		fprintf(stdout, "timerfd3 = %d\n", tfd3);
+
+		
 		if (timerfd_settime(tfd, 0, &tmr, NULL)) {
 			perror("timerfd_settime");
 			return 1;
@@ -196,6 +209,8 @@ int main(int ac, char **av)
 			fprintf(stdout, "whooops! no timer showed up!\n");
 		else
 			fprintf(stdout, "got timer ticks (%ld) after %llu ms\n", ticks, (ttmr - tnow) / 1000);
+
+
 
 		fprintf(stdout, "sequential timer test (100 ms clock) ...\n");
 		tnow = getustime(clks[i].id);

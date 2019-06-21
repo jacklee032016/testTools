@@ -10,5 +10,7 @@ int main(int argc, char *argv[])
 	
 	tid = syscall(SYS_gettid);
 	tid = syscall(SYS_tgkill, getpid(), tid);
+
+	return 0;
 }
 

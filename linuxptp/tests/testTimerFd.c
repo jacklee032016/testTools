@@ -1,17 +1,31 @@
 
 #define _GNU_SOURCE
-#include <sys/syscall.h>
-#include <unistd.h>
-#include <time.h>
-#if defined(__i386__)
-#define __NR_timerfd_create 322
-#define __NR_timerfd_settime 325
-#define __NR_timerfd_gettime 326
-#endif
+//#include <sys/syscall.h>
+//#include <unistd.h>
+//#include <time.h>
+//#if defined(__i386__)
+//#define __NR_timerfd_create 322
+//#define __NR_timerfd_settime 325
+//#define __NR_timerfd_gettime 326
+//#endif
 
-static int timerfd_create(int clockid)
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/signal.h>
+#include <sys/time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <signal.h>
+#include <poll.h>
+#include <fcntl.h>
+#include <time.h>
+#include <errno.h>
+
+static int timerfd_create(int clockid, int flags)
 {
-    return syscall(__NR_timerfd_create, clockid);
+    return syscall(__NR_timerfd_create, clockid, flags);
 }
 
 static int timerfd_settime(int fd, int flags, struct itimerspec *new_value, struct itimerspec *curr_value)
@@ -24,10 +38,10 @@ static int timerfd_gettime(int fd, struct itimerspec *curr_value)
     return syscall(__NR_timerfd_gettime, fd, curr_value);
 }
 
-#define TFD_TIMER_ABSTIME (1 << 0)
+#define TFD_TIMER_ABSTIME			(1 << 0)
 
 ////////////////////////////////////////////////////////////
-#include <sys/timerfd.h>   /* May eventually be different in glibc */
+//#include <sys/timerfd.h>   /* May eventually be different in glibc */
 #include <time.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -46,18 +60,18 @@ static void print_elapsed_time(void)
 	if (first_call)
 	{
 		first_call = 0;
-		if (clock_gettime(CLOCK_MONOTONIC, &start) == \-1)
+		if (clock_gettime(CLOCK_MONOTONIC, &start) ==  -1)
 			die("clock_gettime");
 	}
 
-	if (clock_gettime(CLOCK_MONOTONIC, &curr) == \-1)
+	if (clock_gettime(CLOCK_MONOTONIC, &curr) == -1)
 		die("clock_gettime");
 
-	secs = curr.tv_sec \- start.tv_sec;
-	nsecs = curr.tv_nsec \- start.tv_nsec;
+	secs = curr.tv_sec - start.tv_sec;
+	nsecs = curr.tv_nsec - start.tv_nsec;
 	if (nsecs < 0)
 	{
-		secs\-\-;
+		secs--;
 		nsecs += 1000000000;
 	}
 	
@@ -74,11 +88,11 @@ int main(int argc, char *argv[])
 
 	if ((argc != 2) && (argc != 4))
 	{
-		fprintf(stderr, "%s init\-secs [interval\-secs max\-exp]\\n", argv[0]);
+		fprintf(stderr, "%s init -secs [interval -secs max -exp]\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
-	if (clock_gettime(CLOCK_REALTIME, &now) == \-1)
+	if (clock_gettime(CLOCK_REALTIME, &now) == -1)
 		die("clock_gettime");
 
 	/* Create a CLOCK_REALTIME absolute timer with initial
@@ -98,12 +112,12 @@ int main(int argc, char *argv[])
 	}
 	new_value.it_interval.tv_nsec = 0;
 
-	fd = timerfd_create(CLOCK_REALTIME);
-	if (fd == \-1)
+	fd = timerfd_create(CLOCK_REALTIME, 0);
+	if (fd == -1)
 		die("timerfd_create");
 
 	s = timerfd_settime(fd, TFD_TIMER_ABSTIME, &new_value, NULL);
-	if (s == \-1)
+	if (s == -1)
 		die("timerfd_settime");
 
 	print_elapsed_time();
@@ -117,7 +131,7 @@ int main(int argc, char *argv[])
 
 		tot_exp += exp;
 		print_elapsed_time();
-		printf("read: %llu; total=%d\\n", exp, tot_exp);
+		printf("read: %lu; total=%d\\n", exp, tot_exp);
 	}
 
 	exit(EXIT_SUCCESS);

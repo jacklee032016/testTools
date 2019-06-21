@@ -61,7 +61,7 @@ struct PtpClock
 	struct foreign_clock *best;
 	struct ClockIdentity best_id;
 
-	LIST_HEAD(ports_head, ClockPort)	clkPorts;	/* ports_head is name, port is `struct port`; ports is field name */
+	LIST_HEAD(ports_head, ClockPort)	clkPorts;	/* ports_head is name of new struct, port is `struct port`; ports is field name */
 	
 	struct PtpPort *uds_port;
 	struct pollfd *pollfd;
