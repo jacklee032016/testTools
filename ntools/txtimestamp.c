@@ -63,6 +63,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "extLog.h"
+
 /* command line parameters */
 static int cfg_proto = SOCK_STREAM;
 static int cfg_ipproto = IPPROTO_TCP;

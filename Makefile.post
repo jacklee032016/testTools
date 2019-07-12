@@ -53,7 +53,7 @@ $(TARGET_LIB_SHARED):$(OBJS)
 $(TARGET_LIB_STATIC):$(OBJS)  
 	$(AR) $(ARFLAGS) $@ $^ 
 	$(RANLIB) $@
-	$(MOVE) $(TARGET_LIB_STATIC) $(BIN_DIR)/lib
+	mv $(TARGET_LIB_STATIC) $(BIN_DIR)/lib
 
 ######## $(CFLAGS) 
 # $(OBJ_DIR)/%.o:%.cpp $(OBJ_DIR)/%.d 

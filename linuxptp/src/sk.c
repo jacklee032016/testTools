@@ -314,8 +314,7 @@ int sk_receive(int fd, void *buf, int buflen, struct address *addr, struct hw_ti
 		res = poll(&pfd, 1, sk_tx_timeout);
 		if (res < 1)
 		{
-			pr_err(res ? "poll for tx timestamp failed: %m" :
-			             "timed out while polling for tx timestamp");
+			pr_err("%s", (res)? "poll for tx timestamp failed: %m" : "timed out while polling for tx timestamp");
 			pr_err("increasing tx_timestamp_timeout may correct "
 			       "this issue, but it is likely caused by a driver bug");
 			return res;

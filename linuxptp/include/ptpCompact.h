@@ -481,14 +481,14 @@ void print_set_verbose(int value);
 #define pr_info(x...)    print(LOG_INFO, x)
 #define pr_debug(x...)   print(LOG_DEBUG, x)
 #else
-#define pr_emerg(x...)		EXT_ERROR( x)
-#define pr_alert(x...)			EXT_ERROR( x)
-#define pr_crit(x...)			EXT_ERROR( x)
-#define pr_err(x...)			EXT_ERROR( x)
-#define pr_warning(x...)		EXT_INFO( x)
-#define pr_notice(x...)		EXT_INFO( x)
-#define pr_info(x...)			EXT_INFO( x)
-#define pr_debug(x...)		EXT_DEBUG(EXT_DBG_ON, x)
+#define pr_emerg(x,...)		EXT_ERROR(x, ##__VA_ARGS__)
+#define pr_alert(x,...)			EXT_ERROR(x, ##__VA_ARGS__)
+#define pr_crit(x,...)			EXT_ERROR(x, ##__VA_ARGS__)
+#define pr_err(x,...)			EXT_ERROR(x, ##__VA_ARGS__)
+#define pr_warning(x,...)		EXT_INFO(x, ##__VA_ARGS__)
+#define pr_notice(x,...)		EXT_INFO(x, ##__VA_ARGS__)
+#define pr_info(x,...)			EXT_INFO(x, ##__VA_ARGS__)
+#define pr_debug(x,...)		EXT_DEBUG(EXT_DBG_ON, x, ##__VA_ARGS__)
 //#define pr_debug(x...)   EXT_INFO( x)
 #endif
 

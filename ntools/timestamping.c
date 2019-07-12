@@ -45,6 +45,8 @@
 #include "linux/net_tstamp.h"
 #include "linux/errqueue.h"
 
+#include "extLog.h"
+
 #ifndef SO_TIMESTAMPING
 # define SO_TIMESTAMPING         37
 # define SCM_TIMESTAMPING        SO_TIMESTAMPING
@@ -322,7 +324,7 @@ int main(int argc, char **argv)
 	int siocgstamp = 0;
 	int siocgstampns = 0;
 	int ip_multicast_loop = 0;
-	char *interface;
+	char *ifName;
 	int i;
 	int enabled = 1;
 	int sock;
@@ -338,7 +340,7 @@ int main(int argc, char **argv)
 
 	if (argc < 2)
 		usage(0);
-	interface = argv[1];
+	ifName = argv[1];
 
 	for (i = 2; i < argc; i++) {
 		if (!strcasecmp(argv[i], "SO_TIMESTAMP"))
@@ -373,29 +375,34 @@ int main(int argc, char **argv)
 	if (socket < 0)
 		bail("socket");
 
+	/* 1: get addresss of interface */
 	memset(&device, 0, sizeof(device));
-	strncpy(device.ifr_name, interface, sizeof(device.ifr_name));
+	strncpy(device.ifr_name, ifName, sizeof(device.ifr_name));
 	if (ioctl(sock, SIOCGIFADDR, &device) < 0)
 		bail("getting interface IP address");
 
-	memset(&hwtstamp, 0, sizeof(hwtstamp));
-	strncpy(hwtstamp.ifr_name, interface, sizeof(hwtstamp.ifr_name));
-	hwtstamp.ifr_data = (void *)&hwconfig;
+	/* 2: set hw stamp */
 	memset(&hwconfig, 0, sizeof(hwconfig));
-	hwconfig.tx_type =
-		(so_timestamping_flags & SOF_TIMESTAMPING_TX_HARDWARE) ?
-		HWTSTAMP_TX_ON : HWTSTAMP_TX_OFF;
-	hwconfig.rx_filter =
-		(so_timestamping_flags & SOF_TIMESTAMPING_RX_HARDWARE) ?
-		HWTSTAMP_FILTER_PTP_V1_L4_SYNC : HWTSTAMP_FILTER_NONE;
+	hwconfig.tx_type = (so_timestamping_flags & SOF_TIMESTAMPING_TX_HARDWARE) ? 	HWTSTAMP_TX_ON : HWTSTAMP_TX_OFF;
+	hwconfig.rx_filter = (so_timestamping_flags & SOF_TIMESTAMPING_RX_HARDWARE) ? HWTSTAMP_FILTER_PTP_V1_L4_SYNC : HWTSTAMP_FILTER_NONE;
 	hwconfig_requested = hwconfig;
-	if (ioctl(sock, SIOCSHWTSTAMP, &hwtstamp) < 0) {
+	
+	memset(&hwtstamp, 0, sizeof(hwtstamp));
+	strncpy(hwtstamp.ifr_name, ifName, sizeof(hwtstamp.ifr_name));
+	hwtstamp.ifr_data = (void *)&hwconfig;
+	
+	if (ioctl(sock, SIOCSHWTSTAMP, &hwtstamp) < 0)
+	{
 		if ((errno == EINVAL || errno == ENOTSUP) &&
 		    hwconfig_requested.tx_type == HWTSTAMP_TX_OFF &&
 		    hwconfig_requested.rx_filter == HWTSTAMP_FILTER_NONE)
+		{
 			printf("SIOCSHWTSTAMP: disabling hardware time stamping not possible\n");
+		}
 		else
+		{
 			bail("SIOCSHWTSTAMP");
+		}
 	}
 	printf("SIOCSHWTSTAMP: tx_type %d requested, got %d; rx_filter %d requested, got %d\n",
 	       hwconfig_requested.tx_type, hwconfig.tx_type,
