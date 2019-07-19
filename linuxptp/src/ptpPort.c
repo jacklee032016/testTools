@@ -183,7 +183,7 @@ void fc_prune(struct foreign_clock *fc)
 	struct timespec now;
 	struct ptp_message *m;
 
-	clock_gettime(CLOCK_MONOTONIC, &now);
+	PTP_GET_SYS_TIME_MONOTONIC( &now);
 
 	while (fc->n_messages > FOREIGN_MASTER_THRESHOLD) {
 		m = TAILQ_LAST(&fc->messages, messages);
@@ -216,7 +216,8 @@ void delay_req_prune(struct PtpPort *p)
 {
 	struct timespec now;
 	struct ptp_message *m;
-	clock_gettime(CLOCK_MONOTONIC, &now);
+	
+	PTP_GET_SYS_TIME_MONOTONIC(&now);
 
 	while (!TAILQ_EMPTY(&p->delay_req)) {
 		m = TAILQ_LAST(&p->delay_req, delay_req);
@@ -813,6 +814,8 @@ struct foreign_clock *port_compute_best(struct PtpPort *p)
 	return p->best;
 }
 
+
+/* callback in rntl_link_status */
 void port_link_status(void *ctx, int linkup, int ts_index)
 {
 	struct PtpPort *p = ctx;

@@ -278,7 +278,7 @@ static int tc_fwd_event(struct PtpPort *q, struct ptp_message *msg)
 	int cnt, err;
 	double rr;
 
-	clock_gettime(CLOCK_MONOTONIC, &msg->ts.host);
+	PTP_GET_SYS_TIME_MONOTONIC(&msg->ts.host);
 
 	/* First send the event message out. */
 	for (p = clock_first_port(q->clock); p; p = LIST_NEXT(p, list)) {
@@ -417,7 +417,7 @@ int tc_fwd_folup(struct PtpPort *q, struct ptp_message *msg)
 {
 	struct PtpPort *p;
 
-	clock_gettime(CLOCK_MONOTONIC, &msg->ts.host);
+	PTP_GET_SYS_TIME_MONOTONIC(&msg->ts.host);
 
 	for (p = clock_first_port(q->clock); p; p = LIST_NEXT(p, list)) {
 		if (tc_blocked(q, p, msg)) {
@@ -437,7 +437,7 @@ int tc_fwd_response(struct PtpPort *q, struct ptp_message *msg)
 {
 	struct PtpPort *p;
 
-	clock_gettime(CLOCK_MONOTONIC, &msg->ts.host);
+	PTP_GET_SYS_TIME_MONOTONIC( &msg->ts.host);
 
 	for (p = clock_first_port(q->clock); p; p = LIST_NEXT(p, list)) {
 		if (tc_blocked(q, p, msg)) {
@@ -509,7 +509,7 @@ void tc_prune(struct PtpPort *q)
 	struct timespec now;
 	struct tc_txd *txd;
 
-	clock_gettime(CLOCK_MONOTONIC, &now);
+	PTP_GET_SYS_TIME_MONOTONIC(&now);
 
 	while ((txd = TAILQ_FIRST(&q->tc_transmitted)) != NULL) {
 		if (tc_current(txd->msg, now)) {

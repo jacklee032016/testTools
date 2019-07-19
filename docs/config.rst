@@ -24,7 +24,7 @@ Testing
 -----------------
 ::
 
-    tcpdump -n src 192.168.168.2: find send packet to 224.0.1.129.319/320;
+    tcpdump -n src 192.168.168.2: find send packet to 224.0.1.129:319/320;
 	
 	./Linux.bin.X86/bin/ptp4l -i eth0 -q -m -S -s
 	    -q -m : debug info on console;
@@ -33,3 +33,5 @@ Testing
 		default:
 		    E2E, delay request-response
 			UDP IPV4
+
+    sudo ./Linux.bin.X86/bin/phc2sys -a -r

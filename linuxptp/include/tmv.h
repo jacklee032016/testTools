@@ -22,7 +22,6 @@
 
 #include <time.h>
 
-#define NS_PER_SEC 1000000000LL
 
 
 static inline tmv_t tmv_add(tmv_t a, tmv_t b)

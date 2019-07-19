@@ -79,7 +79,7 @@ int clock_required_modes(struct PtpClock *c);
  *                     selection based on the network interface.
  * @return             A pointer to the single global clock instance.
  */
-struct PtpClock *clock_create(enum CLOCK_TYPE type, struct config *config, const char *phc_device);
+struct PtpClock *clock_create(enum CLOCK_TYPE type, struct PtpConfig *config, const char *phc_device);
 
 /**
  * Obtains a clock's default data set.

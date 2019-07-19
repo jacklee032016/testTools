@@ -84,15 +84,15 @@ static int mcast_join(int fd, int index, const struct sockaddr_in *sa)
 	return 0;
 }
 
-static int udp_close(struct transport *t, struct fdarray *fda)
+static int _udpClose(struct transport *t, struct FdArray *fda)
 {
 	close(fda->fd[0]);
 	close(fda->fd[1]);
 	return 0;
 }
 
-static int open_socket(const char *name, struct in_addr mc_addr[2], short port,
-		       int ttl)
+/* UDP socket of port/device, then join 2 multicast addresses */
+static int _udpOpenSocket(const char *name, struct in_addr mc_addr[2], short port, int ttl)
 {
 	struct sockaddr_in addr;
 	int fd, index, on = 1;
@@ -103,7 +103,8 @@ static int open_socket(const char *name, struct in_addr mc_addr[2], short port,
 	addr.sin_port = htons(port);
 
 	fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (fd < 0) {
+	if (fd < 0)
+	{
 		pr_err("socket failed: %m");
 		goto no_socket;
 	}
@@ -111,33 +112,46 @@ static int open_socket(const char *name, struct in_addr mc_addr[2], short port,
 	if (index < 0)
 		goto no_option;
 
-	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on))) {
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)))
+	{
 		pr_err("setsockopt SO_REUSEADDR failed: %m");
 		goto no_option;
 	}
-	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr))) {
-		pr_err("bind failed: %m");
+
+	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)))
+	{
+		pr_err("bind to local address failed: %m");
 		goto no_option;
 	}
-	if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, name, strlen(name))) {
-		pr_err("setsockopt SO_BINDTODEVICE failed: %m");
+	
+	if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, name, strlen(name)))
+	{
+		pr_err("setsockopt SO_BINDTODEVICE to device %s failed: %m", name);
 		goto no_option;
 	}
-	if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl))) {
+
+	if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl)))
+	{
 		pr_err("setsockopt IP_MULTICAST_TTL failed: %m");
 		goto no_option;
 	}
+	
 	addr.sin_addr = mc_addr[0];
-	if (mcast_join(fd, index, &addr)) {
+	if (mcast_join(fd, index, &addr))
+	{
 		pr_err("mcast_join failed");
 		goto no_option;
 	}
+	
 	addr.sin_addr = mc_addr[1];
-	if (mcast_join(fd, index, &addr)) {
+	if (mcast_join(fd, index, &addr))
+	{
 		pr_err("mcast_join failed");
 		goto no_option;
 	}
-	if (mcast_bind(fd, index)) {
+	
+	if (mcast_bind(fd, index))
+	{
 		goto no_option;
 	}
 	return fd;
@@ -151,8 +165,8 @@ enum { MC_PRIMARY, MC_PDELAY };
 
 static struct in_addr mcast_addr[2];
 
-static int udp_open(struct transport *t, struct PtpInterface *iface,
-		    struct fdarray *fda, enum timestamp_type ts_type)
+static int _udpOpen(struct transport *t, struct PtpInterface *iface,
+		    struct FdArray *fda, enum timestamp_type ts_type)
 {
 	struct PtpUdp *udp = container_of(t, struct PtpUdp, t);
 	uint8_t event_dscp, general_dscp;
@@ -172,11 +186,11 @@ static int udp_open(struct transport *t, struct PtpInterface *iface,
 	if (!inet_aton(PTP_PDELAY_MCAST_IPADDR, &mcast_addr[MC_PDELAY]))
 		return -1;
 
-	efd = open_socket(name, mcast_addr, EVENT_PORT, ttl);
+	efd = _udpOpenSocket(name, mcast_addr, EVENT_PORT, ttl);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket(name, mcast_addr, GENERAL_PORT, ttl);
+	gfd = _udpOpenSocket(name, mcast_addr, GENERAL_PORT, ttl);
 	if (gfd < 0)
 		goto no_general;
 
@@ -189,10 +203,13 @@ static int udp_open(struct transport *t, struct PtpInterface *iface,
 	event_dscp = config_get_int(t->cfg, NULL, "dscp_event");
 	general_dscp = config_get_int(t->cfg, NULL, "dscp_general");
 
-	if (event_dscp && sk_set_priority(efd, event_dscp)) {
+	if (event_dscp && sk_set_priority(efd, event_dscp))
+	{
 		pr_warning("Failed to set event DSCP priority.");
 	}
-	if (general_dscp && sk_set_priority(gfd, general_dscp)) {
+
+	if (general_dscp && sk_set_priority(gfd, general_dscp))
+	{
 		pr_warning("Failed to set general DSCP priority.");
 	}
 
@@ -208,13 +225,13 @@ no_event:
 	return -1;
 }
 
-static int udp_recv(struct transport *t, int fd, void *buf, int buflen,
+static int _udpRecv(struct transport *t, int fd, void *buf, int buflen,
 		    struct address *addr, struct hw_timestamp *hwts)
 {
 	return sk_receive(fd, buf, buflen, addr, hwts, 0);
 }
 
-static int udp_send(struct transport *t, struct fdarray *fda,
+static int _udpSend(struct transport *t, struct FdArray *fda,
 		    enum transport_event event, int peer, void *buf, int len,
 		    struct address *addr, struct hw_timestamp *hwts)
 {
@@ -265,25 +282,27 @@ static int udp_send(struct transport *t, struct fdarray *fda,
 	return event == TRANS_EVENT ? sk_receive(fd, junk, len, NULL, hwts, MSG_ERRQUEUE) : cnt;
 }
 
-static void udp_release(struct transport *t)
+static void _udpRelease(struct transport *t)
 {
 	struct PtpUdp *udp = container_of(t, struct PtpUdp, t);
 	free(udp);
 }
 
-static int udp_physical_addr(struct transport *t, uint8_t *addr)
+static int _udpPhysicalAddr(struct transport *t, uint8_t *addr)
 {
 	struct PtpUdp *udp = container_of(t, struct PtpUdp, t);
 	int len = 0;
 
-	if (udp->mac.len) {
+	if (udp->mac.len)
+	{
 		len = MAC_LEN;
 		memcpy(addr, udp->mac.sll.sll_addr, len);
 	}
+	
 	return len;
 }
 
-static int udp_protocol_addr(struct transport *t, uint8_t *addr)
+static int _udpProtocolAddr(struct transport *t, uint8_t *addr)
 {
 	struct PtpUdp *udp = container_of(t, struct PtpUdp, t);
 	int len = 0;
@@ -302,13 +321,14 @@ struct transport *udp_transport_create(void)
 	if (!udp)
 		return NULL;
 	
-	udp->t.close = udp_close;
-	udp->t.open  = udp_open;
-	udp->t.recv  = udp_recv;
-	udp->t.send  = udp_send;
-	udp->t.release = udp_release;
-	udp->t.physical_addr = udp_physical_addr;
-	udp->t.protocol_addr = udp_protocol_addr;
+	udp->t.close = _udpClose;
+	udp->t.open  = _udpOpen;
+	udp->t.recv  = _udpRecv;
+	udp->t.send  = _udpSend;
+	udp->t.release = _udpRelease;
+	udp->t.physical_addr = _udpPhysicalAddr;
+	udp->t.protocol_addr = _udpProtocolAddr;
+	
 	return &udp->t;
 }
 

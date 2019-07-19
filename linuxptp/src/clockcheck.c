@@ -72,7 +72,7 @@ int clockcheck_sample(struct clockcheck *cc, uint64_t ts)
 	if (interval >= 0 && interval < CHECK_MIN_INTERVAL)
 		return ret;
 
-	clock_gettime(CLOCK_MONOTONIC, &now);
+	PTP_GET_SYS_TIME_MONOTONIC(&now);
 	mono_ts = now.tv_sec * 1000000000LL + now.tv_nsec;
 	mono_interval = (int64_t)mono_ts - cc->last_mono_ts;
 

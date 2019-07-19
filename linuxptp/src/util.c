@@ -31,7 +31,6 @@
 #include "sk.h"
 #include "util.h"
 
-#define NS_PER_SEC 1000000000LL
 #define NS_PER_HOUR (3600 * NS_PER_SEC)
 #define NS_PER_DAY (24 * NS_PER_HOUR)
 
@@ -574,22 +573,39 @@ int get_arg_val_d(int op, const char *optarg, double *val,
 	return 0;
 }
 
-static void handle_int_quit_term(int s)
+static void handleSignalInt(int s)
 {
+	EXT_INFOF("Signal SIGINT received");
 	running = 0;
 }
 
+static void handleSignalQuit(int s)
+{
+	EXT_INFOF("Signal QUIT received");
+	running = 0;
+}
+
+static void handleSiganlTerm(int s)
+{
+	EXT_INFOF("Signal TERM received");
+	running = 0;
+}
+
+
 int handle_term_signals(void)
 {
-	if (SIG_ERR == signal(SIGINT, handle_int_quit_term)) {
+	if (SIG_ERR == signal(SIGINT, handleSignalInt))
+	{
 		fprintf(stderr, "cannot handle SIGINT\n");
 		return -1;
 	}
-	if (SIG_ERR == signal(SIGQUIT, handle_int_quit_term)) {
+	if (SIG_ERR == signal(SIGQUIT, handleSignalQuit))
+	{
 		fprintf(stderr, "cannot handle SIGQUIT\n");
 		return -1;
 	}
-	if (SIG_ERR == signal(SIGTERM, handle_int_quit_term)) {
+	if (SIG_ERR == signal(SIGTERM, handleSiganlTerm))
+	{
 		fprintf(stderr, "cannot handle SIGTERM\n");
 		return -1;
 	}
@@ -751,7 +767,7 @@ int rate_limited(int interval, time_t *last)
 {
 	struct timespec ts;
 
-	if (clock_gettime(CLOCK_MONOTONIC, &ts))
+	if (PTP_GET_SYS_TIME_MONOTONIC( &ts))
 		return 1;
 	if (*last + interval > ts.tv_sec)
 		return 1;
@@ -760,3 +776,4 @@ int rate_limited(int interval, time_t *last)
 
 	return 0;
 }
+

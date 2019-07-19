@@ -1,3 +1,4 @@
+
 #ifndef	__EXT_LOG_H__
 #define	__EXT_LOG_H__
 
@@ -58,22 +59,22 @@
 #ifndef __EXT_RELEASE__
 	
 //	#define	EXT_DEBUG(fmt, args...)	{printf("[%s-%u] DEBUG: " fmt EXT_NEW_LINE, __FILE__, __LINE__, ## args);}
-	#define	EXT_DEBUG(debug, format, message...)		do { \
+	#define	EXT_DEBUGF(debug, format, message...)		do { \
                                if ( \
                                    ((debug) & EXT_DBG_ON) && \
                                    ((debug) & EXT_DBG_TYPES_ON) && \
                                    ((int16_t)((debug) & EXT_DBG_MASK_LEVEL) >= EXT_DBG_MIN_LEVEL)) { \
-                                  SYS_PRINT("%s [DBUG,%s]: [%s-%u.%s()]: " format EXT_NEW_LINE, sysTimestamp(),  sysTaskName(), __FILE__, __LINE__, __FUNCTION__, ##message); \
+                                  SYS_PRINT(ANSI_COLOR_YELLOW"%s [DBUG,%s]: [%s-%u.%s()]: " format ANSI_COLOR_RESET EXT_NEW_LINE, sysTimestamp(),  sysTaskName(), __FILE__, __LINE__, __FUNCTION__, ##message); \
                                  if ((debug) & EXT_DBG_HALT) { \
                                    while(1); \
                                  } \
                                } \
                              } while(0)
 
-                             
-	#define	EXT_INFO(format, message...)			{SYS_PRINT(ANSI_COLOR_CYAN "%s [INFO,%s]: [%s-%u]:" format ANSI_COLOR_RESET EXT_NEW_LINE, sysTimestamp(), sysTaskName(), __FILE__, __LINE__, ##message);}
+
+	#define	EXT_INFOF(format, message...)			{SYS_PRINT(ANSI_COLOR_CYAN "%s [INFO,%s]: [%s-%u.%s()]:" format ANSI_COLOR_RESET EXT_NEW_LINE, sysTimestamp(), sysTaskName(), __FILE__, __LINE__, __FUNCTION__, ##message);}
 	
-	#define	EXT_ERROR(format, message...)			{SYS_PRINT(ERROR_TEXT_BEGIN "%s [ERR, %s]: [%s-%u]:" format ERROR_TEXT_END  EXT_NEW_LINE, sysTimestamp(), sysTaskName(), __FILE__, __LINE__, ##message);}
+	#define	EXT_ERRORF(format, message...)			{SYS_PRINT(ERROR_TEXT_BEGIN "%s [ERR, %s]: [%s-%u.%s()]:" format ERROR_TEXT_END  EXT_NEW_LINE, sysTimestamp(), sysTaskName(), __FILE__, __LINE__, __FUNCTION__, ##message);}
 
 
 //	#define	EXT_ASSERT(x)				{printf("Assertion \"%s\" failed at line %d in %s\n", x, __LINE__, __FILE__); while(1);}
@@ -96,6 +97,7 @@
 			{SYS_PRINT("%s: [%s-%u.%s()]: "format,  sysTaskName(), __FILE__, __LINE__, __FUNCTION__, ##message); }
 
 #define	TRACE()						_TRACE_OUT(EXT_NEW_LINE )
+
 
 /* check predefined marco in gcc with 'cpp -dM include/extLog.h '*/
 #if linux
@@ -126,7 +128,7 @@ inline static char	*sysTaskName(void)
 
 	if(pthread_getname_np(self, threadName, sizeof(threadName)) != 0)
 	{
-		EXT_ERROR("Fail in get thread name: %s", strerror(errno) );
+		EXT_ERRORF("Fail in get thread name: %s", strerror(errno) );
 		return "Unknown";
 	}
 

@@ -29,16 +29,16 @@
 struct transport
 {
 	enum transport_type type;
-	struct config *cfg;
+	struct PtpConfig *cfg;
 
-	int (*close)(struct transport *t, struct fdarray *fda);
+	int (*close)(struct transport *t, struct FdArray *fda);
 
-	int (*open)(struct transport *t, struct PtpInterface *iface, struct fdarray *fda, enum timestamp_type tt);
+	int (*open)(struct transport *t, struct PtpInterface *iface, struct FdArray *fda, enum timestamp_type tt);
 
 	int (*recv)(struct transport *t, int fd, void *buf, int buflen,
 		    struct address *addr, struct hw_timestamp *hwts);
 
-	int (*send)(struct transport *t, struct fdarray *fda,
+	int (*send)(struct transport *t, struct FdArray *fda,
 		    enum transport_event event, int peer, void *buf, int buflen,
 		    struct address *addr, struct hw_timestamp *hwts);
 

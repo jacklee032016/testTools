@@ -87,26 +87,27 @@ static void _remove_vowels(head_t * head)
 
 int main (int arc, char * argv [])
 {
-    // declare the head
-    head_t head;
-    TAILQ_INIT(&head); // initialize the head
+	// declare the head
+	head_t head;
+	TAILQ_INIT(&head); // initialize the head
 
-    // fill the queue with "Hello World\n"
-    _fill_queue(&head, "Hello World!\n");
+	// fill the queue with "Hello World\n"
+	_fill_queue(&head, "Hello World!\n");
 
-    printf("Forwards: ");
-    _print_queue(&head); // prints "Hello World!\n"
-    printf("Backwards: ");
-    _print_queue_backwards(&head); // prints "\n!dlroW olleH"
+	printf("Forwards: ");
+	_print_queue(&head); // prints "Hello World!\n"
+	printf("Backwards: ");
+	_print_queue_backwards(&head); // prints "\n!dlroW olleH"
 
-    // remove the vowels from the queue
-    _remove_vowels(&head);
-    printf("\nForwards, vowels removed: ");
-    _print_queue(&head); // prints "Hll Wrld!\n"
+	// remove the vowels from the queue
+	_remove_vowels(&head);
+	printf("\nForwards, vowels removed: ");
+	_print_queue(&head); // prints "Hll Wrld!\n"
 
-    // free the queue
-    _free_queue(&head);
-    _print_queue(&head); // prints ""
+	// free the queue
+	_free_queue(&head);
+	_print_queue(&head); // prints ""
 
-    return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }
+

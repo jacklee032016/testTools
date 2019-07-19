@@ -139,7 +139,7 @@ static int raw_configure(int fd, int event, int index,
 	return -1;
 }
 
-static int raw_close(struct transport *t, struct fdarray *fda)
+static int raw_close(struct transport *t, struct FdArray *fda)
 {
 	close(fda->fd[0]);
 	close(fda->fd[1]);
@@ -197,7 +197,7 @@ static void addr_to_mac(void *mac, struct address *addr)
 }
 
 static int raw_open(struct transport *t, struct PtpInterface *iface,
-		    struct fdarray *fda, enum timestamp_type ts_type)
+		    struct FdArray *fda, enum timestamp_type ts_type)
 {
 	struct raw *raw = container_of(t, struct raw, t);
 	unsigned char ptp_dst_mac[MAC_LEN];
@@ -287,7 +287,7 @@ static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 	return cnt;
 }
 
-static int raw_send(struct transport *t, struct fdarray *fda,
+static int raw_send(struct transport *t, struct FdArray *fda,
 		    enum transport_event event, int peer, void *buf, int len,
 		    struct address *addr, struct hw_timestamp *hwts)
 {

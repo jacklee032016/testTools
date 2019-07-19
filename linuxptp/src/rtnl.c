@@ -1,5 +1,5 @@
 /**
- * @file rtnl.c
+ * @file rtnl.c. refer to man rtnetlink 
  * @note Copyright (C) 2012 Richard Cochran <richardcochran@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -126,18 +126,22 @@ static inline const char *rta_getattr_str(const struct rtattr *rta)
 	return (const char *)RTA_DATA(rta);
 }
 
+/* get src rtattr from rts into dest tb array */
 static int rtnl_rtattr_parse(struct rtattr *tb[], int max, struct rtattr *rta, int len)
 {
 	unsigned short type;
 
 	memset(tb, 0, sizeof(struct rtattr *) * max);
-	while (RTA_OK(rta, len)) {
+	while (RTA_OK(rta, len))
+	{
 		type = rta->rta_type;
 		if ((type < max) && (!tb[type]))
 			tb[type] = rta;
 		rta = RTA_NEXT(rta, len);
 	}
-	if (len) {
+
+	if (len)
+	{
 		pr_err("Length mismatch: len %d, rta_len=%d\n", len, rta->rta_len);
 		return -1;
 	}
@@ -150,6 +154,7 @@ static inline int rtnl_nested_rtattr_parse(struct rtattr *tb[], int max, struct 
 	return rtnl_rtattr_parse(tb, max, RTA_DATA(rta), RTA_PAYLOAD(rta));
 }
 
+/* struct rtattr: routing attributes. Get index of the link */
 static int rtnl_linkinfo_parse(struct rtattr *rta)
 {
 	int index = -1;
@@ -160,16 +165,17 @@ static int rtnl_linkinfo_parse(struct rtattr *rta)
 	if (rtnl_nested_rtattr_parse(linkinfo, IFLA_INFO_MAX, rta) < 0)
 		return -1;
 
-	if (linkinfo[IFLA_INFO_KIND]) {
+	if (linkinfo[IFLA_INFO_KIND])
+	{
 		kind = rta_getattr_str(linkinfo[IFLA_INFO_KIND]);
 
-		if (kind && !strncmp(kind, "bond", 4) &&
-		    linkinfo[IFLA_INFO_DATA]) {
-			if (rtnl_nested_rtattr_parse(bond, IFLA_BOND_MAX,
-						 linkinfo[IFLA_INFO_DATA]) < 0)
+		if (kind && !strncmp(kind, "bond", 4) && linkinfo[IFLA_INFO_DATA])
+		{
+			if (rtnl_nested_rtattr_parse(bond, IFLA_BOND_MAX, linkinfo[IFLA_INFO_DATA]) < 0)
 				return -1;
 
-			if (bond[IFLA_BOND_ACTIVE_SLAVE]) {
+			if (bond[IFLA_BOND_ACTIVE_SLAVE])
+			{
 				index = rta_getattr_u32(bond[IFLA_BOND_ACTIVE_SLAVE]);
 			}
 		}
@@ -184,8 +190,8 @@ int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx)
 	struct iovec iov;
 	struct sockaddr_nl sa;
 	struct msghdr msg;
-	struct nlmsghdr *nh;
-	struct ifinfomsg *info = NULL;
+	struct nlmsghdr *nh;	/* header of netlink message */
+	struct ifinfomsg *info = NULL;	/* inside nlmsg netlink message*/
 	struct rtattr *tb[IFLA_MAX+1];
 
 	index = if_nametoindex(device);
@@ -201,6 +207,7 @@ int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx)
 
 	iov.iov_base = rtnl_buf;
 	iov.iov_len = rtnl_len;
+	
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_name = &sa;
 	msg.msg_namelen = sizeof(sa);
@@ -213,7 +220,8 @@ int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx)
 		return -1;
 	}
 	
-	if (len > rtnl_len) {
+	if (len > rtnl_len)
+	{
 		free(rtnl_buf);
 		rtnl_len = len;
 		rtnl_buf = malloc(len);
@@ -251,6 +259,7 @@ int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx)
 		if (tb[IFLA_LINKINFO])
 			slave_index = rtnl_linkinfo_parse(tb[IFLA_LINKINFO]);
 
+		pr_debug("salve index %d ", slave_index);
 		if (cb)
 			cb(ctx, link_up, slave_index);
 	}
@@ -264,6 +273,7 @@ int rtnl_open(void)
 	struct sockaddr_nl sa;
 
 	memset(&sa, 0, sizeof(sa));
+	/* define what type message/event will listen to */
 	sa.nl_family = AF_NETLINK;
 	sa.nl_groups = RTNLGRP_LINK;
 

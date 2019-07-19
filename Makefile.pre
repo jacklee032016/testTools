@@ -37,7 +37,7 @@ else
 endif
 
 
-#CC	= $(CROSS_COMPILER)gcc
+CC	= $(CROSS_COMPILER)gcc
 #CXX 	= $(CROSS_COMPILER)g++ 
 #STRIP	= $(CROSS_COMPILER)strip
 #LD	= $(CROSS_COMPILER)ld
@@ -78,7 +78,7 @@ endif
 # CXXFLAGS += -Wall  -Werror -D__DOXYGEN__-LWIP_RAND=rand
 
 
-CFLAGS=-g -Wall -DIPv4 -DLWIP_DEBUG -D$(ARCH) -Dlinux -I$(RULE_DIR)/include -DETHTOOL_GET_TS_INFO
+CFLAGS=-g -Wall -DIPv4 -DLWIP_DEBUG -D$(ARCH) -Dlinux -I$(RULE_DIR)/include -DETHTOOL_GET_TS_INFO -fdiagnostics-color=always 
 
 CFLAGS_0=-g -Wall -DIPv4 -DLWIP_DEBUG -pedantic \
 	-Wparentheses -Wsequence-point -Wswitch-default \
@@ -87,18 +87,12 @@ CFLAGS_0=-g -Wall -DIPv4 -DLWIP_DEBUG -pedantic \
 	-Wmissing-prototypes -Wredundant-decls -Wnested-externs  -std=c89
 
 
-BSP_HEAD_HOME=$(ROOT_DIR)/../../an767/bsp/include
+BSP_HEAD_HOME=$(ROOT_DIR)/../
 
 BSP_HEADER= \
-	-I$(BSP_HEAD_HOME) \
-	-I$(BSP_HEAD_HOME)/clock \
-	-I$(BSP_HEAD_HOME)/cmsis \
-	-I$(BSP_HEAD_HOME)/drivers \
-	-I$(BSP_HEAD_HOME)/same70 \
 
 
 CFLAGS:=$(CFLAGS) -DROOT_DIR='"$(ROOT_DIR)"' \
-	-I$(ROOT_DIR)/unix/port/include -I$(ROOT_DIR)/lwip/src/include -I$(ROOT_DIR)/lwip/src/include/ipv4 -I. \
 	$(BSP_HEADER) \
  
 

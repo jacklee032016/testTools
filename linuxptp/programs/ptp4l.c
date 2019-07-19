@@ -65,12 +65,12 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	char *config = NULL, *req_phc = NULL, *progname;
+	char *configFile = NULL, *req_phc = NULL, *progname;
 	enum CLOCK_TYPE type = CLOCK_TYPE_ORDINARY;
 	int c, err = -1, index, print_level;
 	struct PtpClock *clock = NULL;
 	struct option *opts;
-	struct config *cfg;
+	struct PtpConfig *cfg;
 
 	if (handle_term_signals())
 		return -1;
@@ -82,97 +82,108 @@ int main(int argc, char *argv[])
 	opts = config_long_options(cfg);
 
 	/* Process the command line arguments. */
-	progname = strrchr(argv[0], '/');
+	progname = strrchr(argv[0], '/');	
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt_long(argc, argv, "AEP246HSLf:i:p:sl:mqvh",
-				       opts, &index))) {
-		switch (c) {
-		case 0:
-			if (config_parse_option(cfg, opts[index].name, optarg))
+#if 0	
+	while (EOF != (c = getopt_long(argc, argv, "AEP246HSLf:i:p:sl:mqvh", opts, &index)))
+	{
+		switch (c)
+		{
+			case 0:
+				if (config_parse_option(cfg, opts[index].name, optarg))
+					goto out;
+				break;
+			case 'A':
+				if (config_set_int(cfg, "delay_mechanism", DM_AUTO))
+					goto out;
+				break;
+			case 'E':
+				if (config_set_int(cfg, "delay_mechanism", DM_E2E))
+					goto out;
+				break;
+			case 'P':
+				if (config_set_int(cfg, "delay_mechanism", DM_P2P))
+					goto out;
+				break;
+			case '2':
+				if (config_set_int(cfg, "network_transport", TRANS_IEEE_802_3))
+					goto out;
+				break;
+			case '4':
+				if (config_set_int(cfg, "network_transport", TRANS_UDP_IPV4))
+					goto out;
+				break;
+			case '6':
+				if (config_set_int(cfg, "network_transport",
+						    TRANS_UDP_IPV6))
+					goto out;
+				break;
+			case 'H':
+				if (config_set_int(cfg, "time_stamping", TS_HARDWARE))
+					goto out;
+				break;
+			case 'S':
+				if (config_set_int(cfg, "time_stamping", TS_SOFTWARE))
+					goto out;
+				break;
+			case 'L':
+				if (config_set_int(cfg, "time_stamping", TS_LEGACY_HW))
+					goto out;
+				break;
+			case 'f':
+				config = optarg;
+				break;
+			case 'i':
+				if (!config_create_interface(optarg, cfg))
+					goto out;
+				break;
+			case 'p':
+				req_phc = optarg;
+				break;
+			case 's':
+				if (config_set_int(cfg, "slaveOnly", 1))
+				{
+					goto out;
+				}
+				break;
+			case 'l':
+				if (get_arg_val_i(c, optarg, &print_level, PRINT_LEVEL_MIN, PRINT_LEVEL_MAX))
+					goto out;
+				config_set_int(cfg, "logging_level", print_level);
+				break;
+			case 'm':
+				config_set_int(cfg, "verbose", 1);
+				break;
+			case 'q':
+				config_set_int(cfg, "use_syslog", 0);
+				break;
+			case 'v':
+				version_show(stdout);
+				return 0;
+			case 'h':
+				usage(progname);
+				return 0;
+			case '?':
+				usage(progname);
 				goto out;
-			break;
-		case 'A':
-			if (config_set_int(cfg, "delay_mechanism", DM_AUTO))
+			default:
+				usage(progname);
 				goto out;
-			break;
-		case 'E':
-			if (config_set_int(cfg, "delay_mechanism", DM_E2E))
-				goto out;
-			break;
-		case 'P':
-			if (config_set_int(cfg, "delay_mechanism", DM_P2P))
-				goto out;
-			break;
-		case '2':
-			if (config_set_int(cfg, "network_transport",
-					    TRANS_IEEE_802_3))
-				goto out;
-			break;
-		case '4':
-			if (config_set_int(cfg, "network_transport",
-					    TRANS_UDP_IPV4))
-				goto out;
-			break;
-		case '6':
-			if (config_set_int(cfg, "network_transport",
-					    TRANS_UDP_IPV6))
-				goto out;
-			break;
-		case 'H':
-			if (config_set_int(cfg, "time_stamping", TS_HARDWARE))
-				goto out;
-			break;
-		case 'S':
-			if (config_set_int(cfg, "time_stamping", TS_SOFTWARE))
-				goto out;
-			break;
-		case 'L':
-			if (config_set_int(cfg, "time_stamping", TS_LEGACY_HW))
-				goto out;
-			break;
-		case 'f':
-			config = optarg;
-			break;
-		case 'i':
-			if (!config_create_interface(optarg, cfg))
-				goto out;
-			break;
-		case 'p':
-			req_phc = optarg;
-			break;
-		case 's':
-			if (config_set_int(cfg, "slaveOnly", 1)) {
-				goto out;
-			}
-			break;
-		case 'l':
-			if (get_arg_val_i(c, optarg, &print_level,
-					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX))
-				goto out;
-			config_set_int(cfg, "logging_level", print_level);
-			break;
-		case 'm':
-			config_set_int(cfg, "verbose", 1);
-			break;
-		case 'q':
-			config_set_int(cfg, "use_syslog", 0);
-			break;
-		case 'v':
-			version_show(stdout);
-			return 0;
-		case 'h':
-			usage(progname);
-			return 0;
-		case '?':
-			usage(progname);
-			goto out;
-		default:
-			usage(progname);
-			goto out;
 		}
 	}
+#endif
 
-	if (config && (c = config_read(config, cfg))) {
+#if 0
+	/* only one interface is added, so it only works in ORDINARY mode; UDS port is other type of ptp interface */
+	if (!config_create_interface(EXT_PTP_DEVICE_NAME, cfg))
+	{
+		EXT_ERRORF("Add interface failed");
+		goto out;
+	}
+#endif	
+	configFile = EXT_CONFIG_FILE_PTPD;
+	if (configFile && (c = config_read(configFile, cfg)))
+	{
 		return c;
 	}
 
@@ -186,17 +197,20 @@ int main(int argc, char *argv[])
 	sk_check_fupsync = config_get_int(cfg, NULL, "check_fup_sync");
 	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
 
-	if (config_get_int(cfg, NULL, "clock_servo") == CLOCK_SERVO_NTPSHM) {
+	if (config_get_int(cfg, NULL, "clock_servo") == CLOCK_SERVO_NTPSHM)
+	{
 		config_set_int(cfg, "kernel_leap", 0);
 		config_set_int(cfg, "sanity_freq_limit", 0);
 	}
 
-	if (STAILQ_EMPTY(&cfg->intfs)) {
+	if (STAILQ_EMPTY(&cfg->intfs))
+	{
 		fprintf(stderr, "no interface specified\n");
 		usage(progname);
 		goto out;
 	}
 
+	EXT_INFOF("Ptp Interface number: %d", cfg->n_interfaces);
 	type = config_get_int(cfg, NULL, "clock_type");
 	switch (type) {
 		case CLOCK_TYPE_ORDINARY:
@@ -242,13 +256,17 @@ int main(int argc, char *argv[])
 
 	err = 0;
 
-	while (is_running()) {
+	while (is_running())
+	{
 		if (clock_poll(clock))
 			break;
 	}
+	
 out:
+	EXT_INFOF("%s exit...", progname);
 	if (clock)
 		clock_destroy(clock);
 	config_destroy(cfg);
 	return err;
 }
+

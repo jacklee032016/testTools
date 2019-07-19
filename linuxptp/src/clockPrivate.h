@@ -26,23 +26,24 @@ struct clock_stats
 	unsigned int max_count;
 };
 
+/* only one subscription for one target, for all messages of this target */
 struct clock_subscriber
 {
 	LIST_ENTRY(clock_subscriber) list;
 
-	uint8_t events[EVENT_BITMASK_CNT];
+	uint8_t				events[EVENT_BITMASK_CNT];
 
-	struct PortIdentity targetPortIdentity;
-	struct address addr;
-	UInteger16 sequenceId;
-	time_t expiration;
+	struct PortIdentity		targetPortIdentity;
+	struct address		addr;
+	UInteger16			sequenceId;
+	time_t				expiration;
 };
 
 /* opaque type foe other modules */
 struct PtpClock
 {
 	enum CLOCK_TYPE type;
-	struct config *config;
+	struct PtpConfig *config;
 	clockid_t clkid;
 	
 	struct servo *servo;
@@ -61,13 +62,14 @@ struct PtpClock
 	struct foreign_clock *best;
 	struct ClockIdentity best_id;
 
-	LIST_HEAD(ports_head, ClockPort)	clkPorts;	/* ports_head is name of new struct, port is `struct port`; ports is field name */
+	LIST_HEAD(ports_head, ClockPort)	clkPorts;	/* ports_head is name of new struct, port is `struct port`; ports is field name; UDS port is not in this list */
+	struct PtpPort					*uds_port;
 	
-	struct PtpPort *uds_port;
 	struct pollfd *pollfd;
-
 	int pollfd_valid;
-	int nports; /* does not include the UDS PtpPort */
+	
+	int								nports; /* does not include the UDS PtpPort */
+	
 	int last_port_number;
 	int sde;		/* is State Decision Event */
 	int free_running;
@@ -124,8 +126,8 @@ UInteger8 clock_class(struct PtpClock *c)
  * @param c  The clock instance.
  * @return   A pointer to the configuration, without fail.
  */
-struct config *clock_config(struct PtpClock *c);
-struct config *clock_config(struct PtpClock *c)
+struct PtpConfig *clock_config(struct PtpClock *c);
+struct PtpConfig *clock_config(struct PtpClock *c)
 {
 	return c->config;
 }

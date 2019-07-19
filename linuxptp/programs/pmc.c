@@ -370,8 +370,8 @@ static void usage(char *progname)
 		" -f [file] read configuration from 'file'\n"
 		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use, default 'eth0'\n"
-		"           for network and '/var/run/pmc.$pid' for UDS.\n"
-		" -s [path] server address for UDS, default '/var/run/ptp4l'.\n"
+		"           for network and '"PTP_RUN_HOME"/pmc.$pid' for UDS.\n"
+		" -s [path] server address for UDS, default '"PTP_RUN_HOME"/ptp4l'.\n"
 		" -t [hex]  transport specific field, default 0x0\n"
 		" -v        prints the software version and exits\n"
 		" -z        send zero length TLV values with the GET actions\n"
@@ -390,7 +390,7 @@ int main(int argc, char *argv[])
 	UInteger8 boundary_hops = 1, domain_number = 0, transport_specific = 0;
 	struct ptp_message *msg;
 	struct option *opts;
-	struct config *cfg;
+	struct PtpConfig *cfg;
 #define N_FD 2
 	struct pollfd pollfd[N_FD];
 
@@ -502,10 +502,11 @@ int main(int argc, char *argv[])
 	transport_specific = config_get_int(cfg, NULL, "transportSpecific") << 4;
 	domain_number = config_get_int(cfg, NULL, "domainNumber");
 
-	if (!iface_name) {
-		if (transport_type == TRANS_UDS) {
-			snprintf(uds_local, sizeof(uds_local),
-				 "/var/run/pmc.%d", getpid());
+	if (!iface_name)
+	{
+		if (transport_type == TRANS_UDS)
+		{
+			snprintf(uds_local, sizeof(uds_local), PTP_RUN_HOME"/pmc.%d", getpid());
 			iface_name = uds_local;
 		} else {
 			iface_name = "eth0";

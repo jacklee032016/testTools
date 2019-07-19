@@ -58,15 +58,16 @@ static int port_management_fill_response(struct PtpPort *target,
 		buf += sizeof(*cd->clockType);
 		*cd->clockType = clock_type(target->clock);
 		cd->physicalLayerProtocol = (struct PTPText *) buf;
-		switch(transport_type(target->trp)) {
-		case TRANS_UDP_IPV4:
-		case TRANS_UDP_IPV6:
-		case TRANS_IEEE_802_3:
-			ptp_text_set(cd->physicalLayerProtocol, "IEEE 802.3");
-			break;
-		default:
-			ptp_text_set(cd->physicalLayerProtocol, NULL);
-			break;
+		switch(TransportType(target->trp))
+		{
+			case TRANS_UDP_IPV4:
+			case TRANS_UDP_IPV6:
+			case TRANS_IEEE_802_3:
+				ptp_text_set(cd->physicalLayerProtocol, "IEEE 802.3");
+				break;
+			default:
+				ptp_text_set(cd->physicalLayerProtocol, NULL);
+				break;
 		}
 		buf += sizeof(struct PTPText) + cd->physicalLayerProtocol->length;
 
@@ -77,7 +78,7 @@ static int port_management_fill_response(struct PtpPort *target,
 		buf += sizeof(struct PhysicalAddress) + u16;
 
 		cd->protocolAddress = (struct PortAddress *) buf;
-		u16 = transport_type(target->trp);
+		u16 = TransportType(target->trp);
 		memcpy(&cd->protocolAddress->networkProtocol, &u16, 2);
 		u16 = transport_protocol_addr(target->trp,
                                               cd->protocolAddress->address);

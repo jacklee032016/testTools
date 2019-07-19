@@ -38,7 +38,7 @@ static int _clockAddPort(struct PtpClock *c, int phc_index, enum timestamp_type 
 		return -1;
 	}
 	
-	p = port_open(phc_index, timestamping, ++c->last_port_number, iface, c);
+	p = portCreate(phc_index, timestamping, ++c->last_port_number, iface, c);
 	if (!p)
 	{
 		/* No need to shrink pollfd */
@@ -82,7 +82,7 @@ static void _ensureTsLabel(struct PtpInterface *iface)
 		strncpy((iFace)->ts_label, (iFace)->name, MAX_IFNAME_SIZE);}
 #endif
 
-struct PtpClock *clock_create(enum CLOCK_TYPE type, struct config *config, const char *phc_device)
+struct PtpClock *clock_create(enum CLOCK_TYPE type, struct PtpConfig *config, const char *phc_device)
 {
 	enum servo_type servo = config_get_int(config, NULL, "clock_servo");
 	enum timestamp_type timestamping;
@@ -97,7 +97,7 @@ struct PtpClock *clock_create(enum CLOCK_TYPE type, struct config *config, const
 	int sfl;
 
 	/* clockit_t and clock_gettime is defined time.h, set/get high resolution timers */
-	clock_gettime(CLOCK_REALTIME, &ts);
+	PTP_GET_SYS_TIME_REALTIME(&ts);
 	srandom(ts.tv_sec ^ ts.tv_nsec);
 
 	if (c->nports) {
@@ -125,25 +125,28 @@ struct PtpClock *clock_create(enum CLOCK_TYPE type, struct config *config, const
 	c->desc.userDescription.max_symbols = 128;
 
 	tmp = config_get_string(config, NULL, "productDescription");
-	if (count_char(tmp, ';') != 2 ||
-	    static_ptp_text_set(&c->desc.productDescription, tmp)) {
+	if (count_char(tmp, ';') != 2 || static_ptp_text_set(&c->desc.productDescription, tmp))
+	{
 		pr_err("invalid productDescription '%s'", tmp);
 		return NULL;
 	}
+	
 	tmp = config_get_string(config, NULL, "revisionData");
-	if (count_char(tmp, ';') != 2 ||
-	    static_ptp_text_set(&c->desc.revisionData, tmp)) {
+	if (count_char(tmp, ';') != 2 || static_ptp_text_set(&c->desc.revisionData, tmp))
+	{
 		pr_err("invalid revisionData '%s'", tmp);
 		return NULL;
 	}
 	tmp = config_get_string(config, NULL, "userDescription");
-	if (static_ptp_text_set(&c->desc.userDescription, tmp)) {
+	if (static_ptp_text_set(&c->desc.userDescription, tmp))
+	{
 		pr_err("invalid userDescription '%s'", tmp);
 		return NULL;
 	}
 	
 	tmp = config_get_string(config, NULL, "manufacturerIdentity");
-	if (OUI_LEN != sscanf(tmp, "%hhx:%hhx:%hhx", &oui[0], &oui[1], &oui[2])) {
+	if (OUI_LEN != sscanf(tmp, "%hhx:%hhx:%hhx", &oui[0], &oui[1], &oui[2]))
+	{
 		pr_err("invalid manufacturerIdentity '%s'", tmp);
 		return NULL;
 	}
@@ -159,8 +162,8 @@ struct PtpClock *clock_create(enum CLOCK_TYPE type, struct config *config, const
 		pr_err("Cannot mix 1588 slaveOnly with 802.1AS !gmCapable");
 		return NULL;
 	}
-	if (!config_get_int(config, NULL, "gmCapable") ||
-	    c->dds.flags & DDS_SLAVE_ONLY) {
+	
+	if (!config_get_int(config, NULL, "gmCapable") || c->dds.flags & DDS_SLAVE_ONLY) {
 		c->dds.clockQuality.clockClass = 255;
 	}
 	c->default_dataset.localPriority = config_get_int(config, NULL, "G.8275.defaultDS.localPriority");
@@ -198,7 +201,7 @@ struct PtpClock *clock_create(enum CLOCK_TYPE type, struct config *config, const
 		sk_get_ts_info(iface->ts_label, &iface->ts_info);
 		if (iface->ts_info.valid && ((iface->ts_info.so_timestamping & required_modes) != required_modes))
 		{
-			pr_err("interface '%s' does not support requested timestamping mode", iface->name);
+			pr_err("interface '%s' does not support requested timestamping mode 0x%x", iface->name, required_modes);
 			return NULL;
 		}
 	}
@@ -216,7 +219,8 @@ struct PtpClock *clock_create(enum CLOCK_TYPE type, struct config *config, const
 	}
 	else if (phc_device)
 	{
-		if (1 != sscanf(phc_device, "/dev/ptp%d", &phc_index)) {
+		if (1 != sscanf(phc_device, "/dev/ptp%d", &phc_index))
+		{
 			pr_err("bad ptp device string");
 			return NULL;
 		}
@@ -272,6 +276,7 @@ struct PtpClock *clock_create(enum CLOCK_TYPE type, struct config *config, const
 
 	if (c->free_running)
 	{
+		EXT_INFOF("Clock free running");
 		c->clkid = CLOCK_INVALID;
 		if (timestamping == TS_SOFTWARE || timestamping == TS_LEGACY_HW)
 		{
@@ -280,6 +285,7 @@ struct PtpClock *clock_create(enum CLOCK_TYPE type, struct config *config, const
 	}
 	else if (phc_index >= 0)
 	{
+		EXT_INFOF("Clock use PTP clock");
 		snprintf(phc, sizeof(phc), "/dev/ptp%d", phc_index);
 		c->clkid = phc_open(phc);
 
@@ -297,6 +303,7 @@ struct PtpClock *clock_create(enum CLOCK_TYPE type, struct config *config, const
 	}
 	else
 	{
+		EXT_INFOF("Clock use REALTIME clock");
 		c->clkid = CLOCK_REALTIME;
 		c->utc_timescale = 1;
 		clockadj_init(c->clkid);
@@ -325,9 +332,12 @@ struct PtpClock *clock_create(enum CLOCK_TYPE type, struct config *config, const
 	}
 	c->servo_state = SERVO_UNLOCKED;
 	c->servo_type = servo;
-	if (config_get_int(config, NULL, "dataset_comparison") == DS_CMP_G8275) {
+	if (config_get_int(config, NULL, "dataset_comparison") == DS_CMP_G8275)
+	{
 		c->dscmp = telecom_dscmp;
-	} else {
+	}
+	else
+	{
 		c->dscmp = dscmp;
 	}
 	
@@ -378,15 +388,15 @@ struct PtpClock *clock_create(enum CLOCK_TYPE type, struct config *config, const
 		return NULL;
 	}
 
-	/* Create the UDS interface. */
-	c->uds_port = port_open(phc_index, timestamping, 0, udsif, c);
+	/* Create the UDS port from interface defined just now */
+	c->uds_port = portCreate(phc_index, timestamping, 0, udsif, c);
 	if (!c->uds_port) {
 		pr_err("failed to open the UDS port");
 		return NULL;
 	}
 	clock_fda_changed(c);
 
-	/* Create the ports. */
+	/* Create the ports from interfaces defined by app . */
 	STAILQ_FOREACH(iface, &config->intfs, list)
 	{
 		if (_clockAddPort(c, phc_index, timestamping, iface))
@@ -418,7 +428,7 @@ static void _clockRemovePort(struct PtpClock *c, struct PtpPort *p)
 	LIST_REMOVE(p, list);
 	c->nports--;
 	clock_fda_changed(c);
-	port_close(p);
+	portDestory(p);
 }
 
 void clock_destroy(struct PtpClock *c)
@@ -432,7 +442,7 @@ void clock_destroy(struct PtpClock *c)
 		_clockRemovePort(c, p);
 	}
 	
-	port_close(c->uds_port);
+	portDestory(c->uds_port);
 	free(c->pollfd);
 	if (c->clkid != CLOCK_REALTIME) {
 		phc_close(c->clkid);

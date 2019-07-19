@@ -133,7 +133,7 @@ static void ntpshm_leap(struct servo *servo, int leap)
 	s->leap = leap;
 }
 
-struct servo *ntpshm_servo_create(struct config *cfg)
+struct servo *ntpshm_servo_create(struct PtpConfig *cfg)
 {
 	struct ntpshm_servo *s;
 	int ntpshm_segment = config_get_int(cfg, NULL, "ntpshm_segment");

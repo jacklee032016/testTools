@@ -35,66 +35,73 @@
 #endif
 
 /** Defines a network interface, with PTP options. */
-struct PtpInterface {
-	STAILQ_ENTRY(PtpInterface) list;
-	char name[MAX_IFNAME_SIZE + 1];
-	char ts_label[MAX_IFNAME_SIZE + 1];
-	struct sk_ts_info ts_info;
+struct PtpInterface
+{
+	STAILQ_ENTRY(PtpInterface)		list;
+	
+	char								name[MAX_IFNAME_SIZE + 1];
+	char								ts_label[MAX_IFNAME_SIZE + 1];
+
+	struct sk_ts_info					ts_info;
 };
 
-struct config {
+struct PtpConfig
+{
 	/* configured interfaces */
-	STAILQ_HEAD(interfaces_head, PtpInterface)		intfs;
+	STAILQ_HEAD(interfaces_head, PtpInterface)		intfs;	/* no interface for UDP port */
 	int n_interfaces;
 
 	/* for parsing command line options */
-	struct option *opts;
+	struct option								*opts;
 
 	/* hash of all non-legacy items */
-	struct hash *htab;
+	struct hash								*htab;	/* all config items */
 
 	/* unicast master tables */
 	STAILQ_HEAD(ucmtab_head, unicast_master_table) unicast_master_tables;
 };
 
-int config_read(char *name, struct config *cfg);
-struct PtpInterface *config_create_interface(char *name, struct config *cfg);
-void config_destroy(struct config *cfg);
+
+int config_read(char *name, struct PtpConfig *cfg);
+struct PtpInterface *config_create_interface(char *name, struct PtpConfig *cfg);
+void config_destroy(struct PtpConfig *cfg);
 
 /* New, hash table based methods: */
 
-struct config *config_create(void);
+struct PtpConfig *config_create(void);
 
-double config_get_double(struct config *cfg, const char *section,
+double config_get_double(struct PtpConfig *cfg, const char *section,
 			 const char *option);
 
-int config_get_int(struct config *cfg, const char *section,
+int config_get_int(struct PtpConfig *cfg, const char *section,
 		   const char *option);
 
-char *config_get_string(struct config *cfg, const char *section,
+char *config_get_string(struct PtpConfig *cfg, const char *section,
 			const char *option);
 
-int config_harmonize_onestep(struct config *cfg);
+int config_harmonize_onestep(struct PtpConfig *cfg);
 
-static inline struct option *config_long_options(struct config *cfg)
+static inline struct option *config_long_options(struct PtpConfig *cfg)
 {
 	return cfg->opts;
 }
 
-int config_parse_option(struct config *cfg, const char *opt, const char *val);
+int config_parse_option(struct PtpConfig *cfg, const char *opt, const char *val);
 
-int config_set_double(struct config *cfg, const char *option, double val);
+int config_set_double(struct PtpConfig *cfg, const char *option, double val);
 
-int config_set_section_int(struct config *cfg, const char *section,
+int config_set_section_int(struct PtpConfig *cfg, const char *section,
 			   const char *option, int val);
 
-static inline int config_set_int(struct config *cfg,
-				 const char *option, int val)
+
+static inline int config_set_int(struct PtpConfig *cfg, const char *option, int val)
 {
 	return config_set_section_int(cfg, NULL, option, val);
 }
 
-int config_set_string(struct config *cfg, const char *option,
-		      const char *val);
+int config_set_string(struct PtpConfig *cfg, const char *option, const char *val);
+
+#include "extPtp.h"
+
 
 #endif

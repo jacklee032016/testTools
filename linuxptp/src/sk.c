@@ -117,6 +117,10 @@ int sk_general_init(int fd)
 
 int sk_get_ts_info(const char *name, struct sk_ts_info *sk_info)
 {
+/* same as ethtool, struct ethtool_ts_info and linux/ethtool.h is from kernel. 
+* struct ethtool_ts_info can be used to access PHC (Ptp Hardware Clock), here Clock is driver of kernel, not meaning in PTP
+* JL 
+*/
 #ifdef ETHTOOL_GET_TS_INFO
 	struct ethtool_ts_info info;
 	struct ifreq ifr;
@@ -330,7 +334,6 @@ int sk_receive(int fd, void *buf, int buflen, struct address *addr, struct hw_ti
 	if (cnt < 1)
 		pr_err("recvmsg%sfailed: %m", flags == MSG_ERRQUEUE ? " tx timestamp " : " ");
 
-
 	for (cm = CMSG_FIRSTHDR(&msg); cm != NULL; cm = CMSG_NXTHDR(&msg, cm))
 	{
 		level = cm->cmsg_level;
@@ -361,7 +364,8 @@ int sk_receive(int fd, void *buf, int buflen, struct address *addr, struct hw_ti
 	if (addr)
 		addr->len = msg.msg_namelen;
 
-	if (!ts) {
+	if (!ts)
+	{
 		memset(&hwts->ts, 0, sizeof(hwts->ts));
 		return cnt;
 	}

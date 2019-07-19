@@ -18,10 +18,12 @@ SRC:= \
 LOCAL_ALL := \
 		timestamping \
 		hwstampConfig \
+		
 
 ifeq ($(ARCH),arm)
 LOCAL_ALL += \
-		txtimestamp 
+		txtimestamp \
+		testptp \
 
 endif		
 
@@ -48,5 +50,9 @@ timestamping:$(OBJ_DIR)/timestamping.o $(OBJS)
 
 hwstampConfig:$(OBJ_DIR)/hwstampConfig.o $(OBJS)
 	$(CC) -s -Wl,--gc-sections -o $@ $^ $(LDFLAGS)
+	$(MOVE) $@ $(BIN_DIR)/bin  
+
+testptp:$(OBJ_DIR)/testptp.o $(OBJS)
+	$(CC) -s -Wl,--gc-sections -o $@ $^ $(LDFLAGS) -lrt
 	$(MOVE) $@ $(BIN_DIR)/bin  
 

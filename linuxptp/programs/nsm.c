@@ -33,8 +33,8 @@
 #define NSM_NFD		3
 
 struct nsm {
-	struct config		*cfg;
-	struct fdarray		fda;
+	struct PtpConfig		*cfg;
+	struct FdArray		fda;
 	struct transport	*trp;
 	struct TimestampProcess		*tsproc;
 	struct ptp_message	*nsm_delay_req;
@@ -256,7 +256,7 @@ static void nsm_help(FILE *fp)
 	fprintf(fp, "\n");
 }
 
-static int nsm_open(struct nsm *nsm, struct config *cfg)
+static int nsm_open(struct nsm *nsm, struct PtpConfig *cfg)
 {
 	enum transport_type transport;
 	struct PtpInterface *iface;
@@ -354,7 +354,7 @@ failed:
 
 static int nsm_request(struct nsm *nsm, char *target)
 {
-	enum transport_type type = transport_type(nsm->trp);
+	enum transport_type type = TransportType(nsm->trp);
 	UInteger8 transportSpecific;
 	struct ptp_message *msg;
 	struct tlv_extra *extra;
@@ -464,7 +464,7 @@ int main(int argc, char *argv[])
 	struct nsm *nsm = &the_nsm;
 	struct ptp_message *msg;
 	struct option *opts;
-	struct config *cfg;
+	struct PtpConfig *cfg;
 
 	if (handle_term_signals()) {
 		return -1;

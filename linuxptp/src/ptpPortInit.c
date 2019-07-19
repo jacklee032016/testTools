@@ -19,7 +19,8 @@
  * @param mdiff  Whether a new master has been selected.
  * @return       The new state for the port.
  */
-enum PORT_STATE ptp_fsm(enum PORT_STATE state, enum PORT_EVENT event, int mdiff)
+/* maste SM ??? */ 
+static enum PORT_STATE _ptpFsm(enum PORT_STATE state, enum PORT_EVENT event, int mdiff)
 {
 	enum PORT_STATE next = state;
 
@@ -220,7 +221,8 @@ enum PORT_STATE ptp_fsm(enum PORT_STATE state, enum PORT_EVENT event, int mdiff)
 	return next;
 }
 
-enum PORT_STATE ptp_slave_fsm(enum PORT_STATE state, enum PORT_EVENT event, int mdiff)
+/* slave-only SM */
+static enum PORT_STATE _ptpSlaveFsm(enum PORT_STATE state, enum PORT_EVENT event, int mdiff)
 {
 	enum PORT_STATE next = state;
 
@@ -338,7 +340,7 @@ enum PORT_STATE ptp_slave_fsm(enum PORT_STATE state, enum PORT_EVENT event, int 
 
 int port_initialize(struct PtpPort *p)
 {
-	struct config *cfg = clock_config(p->clock);
+	struct PtpConfig *cfg = clock_config(p->clock);
 	int fd[N_TIMER_FDS], i;
 
 	p->multiple_seq_pdr_count  = 0;
@@ -384,7 +386,7 @@ int port_initialize(struct PtpPort *p)
 	}
 
 	/* No need to open rtnl socket on UDS port. */
-	if (transport_type(p->trp) != TRANS_UDS) {
+	if (TransportType(p->trp) != TRANS_UDS) {
 		if (p->fda.fd[FD_RTNL] == -1)
 			p->fda.fd[FD_RTNL] = rtnl_open();
 		if (p->fda.fd[FD_RTNL] >= 0)
@@ -410,10 +412,10 @@ no_timers:
 
 #define ANNOUNCE_SPAN 1
 
-struct PtpPort *port_open(int phc_index, enum timestamp_type timestamping, int number, struct PtpInterface *ptpIntf, struct PtpClock *clock)
+struct PtpPort *portCreate(int phc_index, enum timestamp_type timestamping, int number, struct PtpInterface *ptpIntf, struct PtpClock *clock)
 {
 	enum CLOCK_TYPE type = clock_type(clock);
-	struct config *cfg = clock_config(clock);
+	struct PtpConfig *cfg = clock_config(clock);
 	struct PtpPort *p = malloc(sizeof(*p));
 	enum transport_type transport;
 	int i;
@@ -447,7 +449,7 @@ struct PtpPort *port_open(int phc_index, enum timestamp_type timestamping, int n
 			goto err_port;
 	}
 
-	p->state_machine = clock_slave_only(clock) ? ptp_slave_fsm : ptp_fsm;
+	p->state_machine = clock_slave_only(clock) ? _ptpSlaveFsm : _ptpFsm;
 	p->phc_index = phc_index;
 	p->jbod = config_get_int(cfg, ptpIntf->name, "boundary_clock_jbod");
 	transport = config_get_int(cfg, ptpIntf->name, "network_transport");
@@ -572,7 +574,7 @@ err_port:
 	return NULL;
 }
 
-void port_close(struct PtpPort *p)
+void portDestory(struct PtpPort *p)
 {
 	if (portIsEnabled(p))
 	{

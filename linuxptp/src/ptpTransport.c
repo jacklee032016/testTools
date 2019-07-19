@@ -24,12 +24,12 @@
 #include "ptpImplements.h"
 #include "transportPrivate.h"
 
-int transport_close(struct transport *t, struct fdarray *fda)
+int transport_close(struct transport *t, struct FdArray *fda)
 {
 	return t->close(t, fda);
 }
 
-int transport_open(struct transport *t, struct PtpInterface *iface, struct fdarray *fda, enum timestamp_type tt)
+int transport_open(struct transport *t, struct PtpInterface *iface, struct FdArray *fda, enum timestamp_type tt)
 {
 	return t->open(t, iface, fda, tt);
 }
@@ -39,28 +39,28 @@ int transport_recv(struct transport *t, int fd, struct ptp_message *msg)
 	return t->recv(t, fd, msg, sizeof(msg->data), &msg->address, &msg->hwts);
 }
 
-int transport_send(struct transport *t, struct fdarray *fda, enum transport_event event, struct ptp_message *msg)
+int transport_send(struct transport *t, struct FdArray *fda, enum transport_event event, struct ptp_message *msg)
 {
 	int len = ntohs(msg->header.messageLength);
 
 	return t->send(t, fda, event, 0, msg, len, NULL, &msg->hwts);
 }
 
-int transport_peer(struct transport *t, struct fdarray *fda, enum transport_event event, struct ptp_message *msg)
+int transport_peer(struct transport *t, struct FdArray *fda, enum transport_event event, struct ptp_message *msg)
 {
 	int len = ntohs(msg->header.messageLength);
 
 	return t->send(t, fda, event, 1, msg, len, NULL, &msg->hwts);
 }
 
-int transport_sendto(struct transport *t, struct fdarray *fda, enum transport_event event, struct ptp_message *msg)
+int transport_sendto(struct transport *t, struct FdArray *fda, enum transport_event event, struct ptp_message *msg)
 {
 	int len = ntohs(msg->header.messageLength);
 
 	return t->send(t, fda, event, 0, msg, len, &msg->address, &msg->hwts);
 }
 
-int transport_txts(struct fdarray *fda, struct ptp_message *msg)
+int transport_txts(struct FdArray *fda, struct ptp_message *msg)
 {
 	int cnt, len = ntohs(msg->header.messageLength);
 	struct hw_timestamp *hwts = &msg->hwts;
@@ -88,12 +88,12 @@ int transport_protocol_addr(struct transport *t, uint8_t *addr)
 	return 0;
 }
 
-enum transport_type transport_type(struct transport *t)
+enum transport_type TransportType(struct transport *t)
 {
 	return t->type;
 }
 
-struct transport *transport_create(struct config *cfg, enum transport_type type)
+struct transport *transport_create(struct PtpConfig *cfg, enum transport_type type)
 {
 	struct transport *t = NULL;
 	switch (type) {

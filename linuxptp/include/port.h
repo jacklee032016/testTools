@@ -46,7 +46,7 @@ struct PtpPort;
  *
  * @param port A pointer previously obtained via port_open().
  */
-void port_close(struct PtpPort *port);
+void portDestory(struct PtpPort *port);
 
 /**
  * Computes the 'best' foreign master discovered on a port. This has
@@ -157,7 +157,7 @@ void port_notify_event(struct PtpPort *p, enum NOTIFICATION event);
  * @param clock         A pointer to the system PTP clock.
  * @return A pointer to an open port on success, or NULL otherwise.
  */
-struct PtpPort *port_open(int phc_index,
+struct PtpPort *portCreate(int phc_index,
 		       enum timestamp_type timestamping,
 		       int number,
 		       struct PtpInterface *interface,

@@ -24,7 +24,6 @@
 #include "ptpCompact.h"
 #include "missing.h"
 
-#define NS_PER_SEC 1000000000LL
 
 static int realtime_leap_bit;
 static long realtime_hz;
@@ -36,10 +35,10 @@ void clockadj_init(clockid_t clkid)
 	if (clkid == CLOCK_REALTIME) {
 		/* This is USER_HZ in the kernel. */
 		realtime_hz = sysconf(_SC_CLK_TCK);
-		if (realtime_hz > 0) {
+		if (realtime_hz > 0)
+		{
 			/* This is TICK_USEC in the kernel. */
-			realtime_nominal_tick =
-				(1000000 + realtime_hz / 2) / realtime_hz;
+			realtime_nominal_tick = (1000000 + realtime_hz / 2) / realtime_hz;
 		}
 	}
 #endif
@@ -150,13 +149,14 @@ int sysclk_max_freq(void)
 	struct timex tx;
 	memset(&tx, 0, sizeof(tx));
 	if (clock_adjtime(clkid, &tx) < 0)
-		{
+	{
 		pr_err("failed to read out the clock maximum adjustment: %m");
-		}
+	}
 	else
-		{
+	{
 		f = tx.tolerance / 65.536;
-		}
+	}
+	
 	if (!f)
 		f = 500000;
 
@@ -182,3 +182,4 @@ void sysclk_set_sync(void)
 	if (clock_adjtime(clkid, &tx) < 0)
 		pr_err("failed to set clock status and maximum error: %m");
 }
+

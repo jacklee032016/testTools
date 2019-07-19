@@ -82,11 +82,11 @@ struct ptp_message
 {
 	union
 	{
-		struct ptp_header          header;
-		struct announce_msg        announce;
-		struct sync_msg            sync;
-		struct delay_req_msg       delay_req;
-		struct follow_up_msg       follow_up;
+		struct ptp_header				header;
+		struct announce_msg			announce;
+		struct sync_msg				sync;
+		struct delay_req_msg			delay_req;
+		struct follow_up_msg			follow_up;
 		struct delay_resp_msg			delay_resp;
 		struct pdelay_req_msg			pdelay_req;
 		struct pdelay_resp_msg		pdelay_resp;
@@ -100,7 +100,7 @@ struct ptp_message
 	int	tail_room;
 	int refcnt;
 	
-	TAILQ_ENTRY(ptp_message) list;
+	TAILQ_ENTRY(ptp_message)		list;
 
 	struct {
 		/**
@@ -116,23 +116,23 @@ struct ptp_message
 		 * - pdelay_resp     requestReceiptTimestamp
 		 * - pdelay_resp_fup responseOriginTimestamp
 		 */
-		struct LocalTimeStamp		pdu;
+		struct LocalTimeStamp				pdu;
 		/**
 		 * Approximate ingress time stamp using the relative
 		 * CLOCK_MONOTONIC. Used to determine when announce
 		 * messages have expired.
 		 */
-		struct timespec			host;
+		struct timespec					host;
 	} ts;
 	
 	/* Contains the ingress time stamp obtained by the SO_TIMESTAMPING socket option */
-	struct hw_timestamp		hwts;
+	struct hw_timestamp					hwts;
 	
 	/* Contains the address this message was received from or should be sent to */
-	struct address address;
+	struct address					address;
 	
 	/* List of TLV descriptors.  Each item in the list contains pointers to the appended TLVs */
-	TAILQ_HEAD(tlv_list, tlv_extra) tlv_list;
+	TAILQ_HEAD(tlv_list, tlv_extra)		tlv_list;
 };
 
 /**
@@ -395,42 +395,48 @@ enum unicast_event {
 	UC_EV_CANCEL,
 };
 
-struct unicast_master_address {
+struct unicast_master_address
+{
 	STAILQ_ENTRY(unicast_master_address) list;
-	struct PortIdentity portIdentity;
-	enum transport_type type;
-	enum unicast_state state;
-	struct address address;
-	unsigned int granted;
-	unsigned int sydymsk;
-	time_t renewal_tmo;
+	
+	struct PortIdentity			portIdentity;
+	enum transport_type		type;
+	enum unicast_state		state;
+	struct address			address;
+	
+	unsigned int				granted;
+	unsigned int				sydymsk;
+	time_t					renewal_tmo;
 };
 
-struct unicast_master_table {
+struct unicast_master_table
+{
 	STAILQ_HEAD(addrs_head, unicast_master_address) addrs;
-	STAILQ_ENTRY(unicast_master_table) list;
-	Integer8 logQueryInterval;
-	int table_index;
-	int count;
-	int port;
+	
+	STAILQ_ENTRY(unicast_master_table)			list;
+	Integer8										logQueryInterval;
+	int											table_index;
+	int											count;
+	int											port;
+	
 	/* for use with P2P delay mechanism: */
-	struct unicast_master_address peer_addr;
-	char *peer_name;
+	struct unicast_master_address					peer_addr;
+	char											*peer_name;
 };
 
 
 #include <time.h>
 #include <inttypes.h>
 
-struct config;
+struct PtpConfig;
 struct PtpInterface;
 
 struct transport;
 
-int transport_close(struct transport *t, struct fdarray *fda);
+int transport_close(struct transport *t, struct FdArray *fda);
 
 int transport_open(struct transport *t, struct PtpInterface *iface,
-		   struct fdarray *fda, enum timestamp_type tt);
+		   struct FdArray *fda, enum timestamp_type tt);
 
 int transport_recv(struct transport *t, int fd, struct ptp_message *msg);
 
@@ -444,7 +450,7 @@ int transport_recv(struct transport *t, int fd, struct ptp_message *msg);
  * @param msg	The message to send.
  * @return	Number of bytes send, or negative value in case of an error.
  */
-int transport_send(struct transport *t, struct fdarray *fda,
+int transport_send(struct transport *t, struct FdArray *fda,
 		   enum transport_event event, struct ptp_message *msg);
 
 /**
@@ -457,7 +463,7 @@ int transport_send(struct transport *t, struct fdarray *fda,
  * @param msg	The message to send.
  * @return	Number of bytes send, or negative value in case of an error.
  */
-int transport_peer(struct transport *t, struct fdarray *fda,
+int transport_peer(struct transport *t, struct FdArray *fda,
 		   enum transport_event event, struct ptp_message *msg);
 
 /**
@@ -470,7 +476,7 @@ int transport_peer(struct transport *t, struct fdarray *fda,
  *		be set in the address field.
  * @return	Number of bytes send, or negative value in case of an error.
  */
-int transport_sendto(struct transport *t, struct fdarray *fda,
+int transport_sendto(struct transport *t, struct FdArray *fda,
 		     enum transport_event event, struct ptp_message *msg);
 
 /**
@@ -482,13 +488,13 @@ int transport_sendto(struct transport *t, struct fdarray *fda,
  *              transport_peer(), or transport_sendto().
  * @return	Zero on success, or negative value in case of an error.
  */
-int transport_txts(struct fdarray *fda,
+int transport_txts(struct FdArray *fda,
 		   struct ptp_message *msg);
 
 /**
  * Returns the transport's type.
  */
-enum transport_type transport_type(struct transport *t);
+enum transport_type TransportType(struct transport *t);
 
 #define TRANSPORT_ADDR_LEN 16
 
@@ -516,7 +522,7 @@ int transport_protocol_addr(struct transport *t, uint8_t *addr);
  * @param type  Which transport to obtain.
  * @return      Pointer to a transport instance on success, NULL otherwise.
  */
-struct transport *transport_create(struct config *cfg,
+struct transport *transport_create(struct PtpConfig *cfg,
 				   enum transport_type type);
 
 /**
@@ -542,7 +548,7 @@ struct transport *raw_transport_create(void);
 
 struct PtpMgmtClient;
 
-struct PtpMgmtClient *pmc_create(struct config *cfg, enum transport_type transport_type,
+struct PtpMgmtClient *pmc_create(struct PtpConfig *cfg, enum transport_type transport_type,
 		       const char *iface_name, UInteger8 boundary_hops,
 		       UInteger8 domain_number, UInteger8 transport_specific,
 		       int zero_datalen);

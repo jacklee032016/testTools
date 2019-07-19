@@ -1,4 +1,6 @@
 /**
+ * Ptp Manangement Client common: used by pmc and phc2Sys
+ *
  * @file pmc_common.c
  * @note Copyright (C) 2012 Richard Cochran <richardcochran@gmail.com>
  * @note Copyright (C) 2013 Miroslav Lichvar <mlichvar@redhat.com>
@@ -312,11 +314,11 @@ struct PtpMgmtClient {
 	struct PortIdentity target;
 
 	struct transport *transport;
-	struct fdarray fdarray;
+	struct FdArray fdarray;
 	int zero_length_gets;
 };
 
-struct PtpMgmtClient *pmc_create(struct config *cfg, enum transport_type transport_type,
+struct PtpMgmtClient *pmc_create(struct PtpConfig *cfg, enum transport_type transport_type,
 		       const char *iface_name, UInteger8 boundary_hops,
 		       UInteger8 domain_number, UInteger8 transport_specific,
 		       int zero_datalen)
@@ -344,7 +346,8 @@ struct PtpMgmtClient *pmc_create(struct config *cfg, enum transport_type transpo
 	pmc->transport_specific = transport_specific;
 
 	pmc->transport = transport_create(cfg, transport_type);
-	if (!pmc->transport) {
+	if (!pmc->transport)
+	{
 		pr_err("failed to create transport");
 		goto failed;
 	}
@@ -354,8 +357,8 @@ struct PtpMgmtClient *pmc_create(struct config *cfg, enum transport_type transpo
 		strncpy(iface.ts_label, iface.name, MAX_IFNAME_SIZE);
 	}
 
-	if (transport_open(pmc->transport, &iface,
-			   &pmc->fdarray, TS_SOFTWARE)) {
+	if (transport_open(pmc->transport, &iface, &pmc->fdarray, TS_SOFTWARE))
+	{
 		pr_err("failed to open transport");
 		goto failed;
 	}
@@ -566,18 +569,22 @@ struct ptp_message *pmc_recv(struct PtpMgmtClient *pmc)
 	int cnt, err;
 
 	msg = msg_allocate();
-	if (!msg) {
+	if (!msg)
+	{
 		pr_err("low memory");
 		return NULL;
 	}
 	msg->hwts.type = TS_SOFTWARE;
 	cnt = transport_recv(pmc->transport, pmc_get_transport_fd(pmc), msg);
-	if (cnt <= 0) {
+	if (cnt <= 0)
+	{
 		pr_err("recv message failed");
 		goto failed;
 	}
+
 	err = ptpMsgReceive(msg, cnt);
-	if (err) {
+	if (err)
+	{
 		switch (err) {
 		case -EBADMSG:
 			pr_err("bad message");
@@ -588,7 +595,9 @@ struct ptp_message *pmc_recv(struct PtpMgmtClient *pmc)
 		}
 		goto failed;
 	}
-	if (msg_sots_missing(msg)) {
+
+	if (msg_sots_missing(msg))
+	{
 		pr_err("received %s without timestamp",
 		       ptpMsgTypeString(msg_type(msg)));
 		goto failed;

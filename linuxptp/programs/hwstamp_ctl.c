@@ -58,7 +58,8 @@ static void usage(char *progname)
 		" -v           prints the software version and exits\n"
 		"\n",
 		progname,
-		HWTSTAMP_FILTER_NONE, HWTSTAMP_FILTER_PTP_V2_DELAY_REQ,
+		HWTSTAMP_FILTER_NONE, 
+		HWTSTAMP_FILTER_PTP_V2_DELAY_REQ,
 		HWTSTAMP_FILTER_NONE,
 		HWTSTAMP_FILTER_ALL,
 		HWTSTAMP_FILTER_SOME,

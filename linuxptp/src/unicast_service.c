@@ -102,7 +102,9 @@ static void initialize_interval(struct unicast_service_interval *interval,
 {
 	LIST_INIT(&interval->clients);
 	interval->incr = log_to_timespec(log_period);
-	clock_gettime(CLOCK_MONOTONIC, &interval->tmo);
+	
+	PTP_GET_SYS_TIME_MONOTONIC( &interval->tmo);
+	
 	interval->tmo.tv_nsec += 10000000;
 	timespec_normalize(&interval->tmo);
 	interval->log_period = log_period;
@@ -171,7 +173,7 @@ static int unicast_service_clients(struct PtpPort *p,
 	struct timespec now;
 	int err = 0;
 
-	err = clock_gettime(CLOCK_MONOTONIC, &now);
+	err = PTP_GET_SYS_TIME_MONOTONIC(&now);
 	if (err) {
 		pr_err("clock_gettime failed: %m");
 		return err;
@@ -207,7 +209,7 @@ static void unicast_service_extend(struct unicast_client_address *client, struct
 	time_t tmo;
 	int err;
 
-	err = clock_gettime(CLOCK_MONOTONIC, &now);
+	err = PTP_GET_SYS_TIME_MONOTONIC( &now);
 	if (err) {
 		pr_err("clock_gettime failed: %m");
 		return;
@@ -306,7 +308,7 @@ int unicast_service_add(struct PtpPort *p, struct ptp_message *m,
 		 * Find any client records, and remove any stale contract.
 		 */
 		LIST_FOREACH_SAFE(ctmp, &itmp->clients, list, next) {
-			if (!addreq(transport_type(p->trp),
+			if (!addreq(TransportType(p->trp),
 				    &ctmp->addr, &m->address)) {
 				continue;
 			}
@@ -404,7 +406,7 @@ int unicast_service_grant(struct PtpPort *p, struct ptp_message *m,
 
 int unicast_service_initialize(struct PtpPort *p)
 {
-	struct config *cfg = clock_config(p->clock);
+	struct PtpConfig *cfg = clock_config(p->clock);
 
 	if (!config_get_int(cfg, p->name, "unicast_listen")) {
 		return 0;
@@ -460,7 +462,7 @@ void unicast_service_remove(struct PtpPort *p, struct ptp_message *m,
 
 	LIST_FOREACH(itmp, &p->unicast_service->intervals, list) {
 		LIST_FOREACH_SAFE(ctmp, &itmp->clients, list, next) {
-			if (!addreq(transport_type(p->trp),
+			if (!addreq(TransportType(p->trp),
 				    &ctmp->addr, &m->address)) {
 				continue;
 			}
@@ -485,7 +487,7 @@ int unicast_service_timer(struct PtpPort *p)
 	if (!p->unicast_service) {
 		return 0;
 	}
-	clock_gettime(CLOCK_MONOTONIC, &now);
+	PTP_GET_SYS_TIME_MONOTONIC(&now);
 
 	switch (p->state)
 	{

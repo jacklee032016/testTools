@@ -88,7 +88,7 @@ static int mc_join(int fd, int index, const struct sockaddr_in6 *sa)
 	return 0;
 }
 
-static int udp6_close(struct transport *t, struct fdarray *fda)
+static int udp6_close(struct transport *t, struct FdArray *fda)
 {
 	close(fda->fd[0]);
 	close(fda->fd[1]);
@@ -159,7 +159,7 @@ enum { MC_PRIMARY, MC_PDELAY };
 static struct in6_addr mc6_addr[2];
 
 static int udp6_open(struct transport *t, struct PtpInterface *iface,
-		     struct fdarray *fda, enum timestamp_type ts_type)
+		     struct FdArray *fda, enum timestamp_type ts_type)
 {
 	struct udp6 *udp6 = container_of(t, struct udp6, t);
 	uint8_t event_dscp, general_dscp;
@@ -223,7 +223,7 @@ static int udp6_recv(struct transport *t, int fd, void *buf, int buflen,
 	return sk_receive(fd, buf, buflen, addr, hwts, 0);
 }
 
-static int udp6_send(struct transport *t, struct fdarray *fda,
+static int udp6_send(struct transport *t, struct FdArray *fda,
 		     enum transport_event event, int peer, void *buf, int len,
 		     struct address *addr, struct hw_timestamp *hwts)
 {

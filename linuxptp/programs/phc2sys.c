@@ -45,9 +45,12 @@
 #include "util.h"
 #include "ptpConfig.h"
 
+
+#define	PHC_SYS_DBG_DATASET( datasetId)	\
+			EXT_DEBUGF(PHC_SYS_DEBUG, "DataSet ID " #datasetId ":0x%x", datasetId )
+
 #define KP 0.7
 #define KI 0.3
-#define NS_PER_SEC 1000000000LL
 
 #define PHC_PPS_OFFSET_LIMIT 10000000
 #define PMC_UPDATE_INTERVAL (60 * NS_PER_SEC)
@@ -87,30 +90,37 @@ struct port {
 	struct clock *clock;
 };
 
-struct node {
+struct node
+{
 	unsigned int stats_max_count;
 	int sanity_freq_limit;
-	enum servo_type servo_type;
-	int phc_readings;
-	double phc_interval;
+	enum servo_type				servoType;
+	
+	int								phc_readings;
+	double							phc_interval;
 	int sync_offset;
 	int forced_sync_offset;
 	int utc_offset_traceable;
 	int leap;
 	int kernel_leap;
-	struct PtpMgmtClient *pmc;
-	int pmc_ds_requested;
-	uint64_t pmc_last_update;
-	int state_changed;
-	int clock_identity_set;
-	struct ClockIdentity clock_identity;
-	LIST_HEAD(port_head, port) ports;
-	LIST_HEAD(clock_head, clock) clocks;
-	LIST_HEAD(dst_clock_head, clock) dst_clocks;
-	struct clock *master;
+	
+	struct PtpMgmtClient				*pmc;
+	int								pmc_ds_requested;
+	uint64_t							pmc_last_update;	/* timestamp of last update */
+	
+	int								state_changed;
+	int								clock_identity_set;
+	struct ClockIdentity				clock_identity;
+	
+	LIST_HEAD(port_head, port)		ports;
+	LIST_HEAD(clock_head, clock)		clocks;
+	LIST_HEAD(dst_clock_head, clock)	dst_clocks;
+	
+	struct clock						*master;
 };
 
-static struct config *phc2sys_config;
+
+static struct PtpConfig *phc2sys_config;
 
 static int update_pmc(struct node *node, int subscribe);
 static int clock_handle_leap(struct node *node, struct clock *clock,
@@ -123,39 +133,7 @@ static int run_pmc_port_properties(struct node *node, int timeout,
 				   unsigned int port,
 				   int *state, int *tstamping, char *iface);
 
-static clockid_t clock_open(char *device, int *phc_index)
-{
-	struct sk_ts_info ts_info;
-	char phc_device[19];
-	int clkid;
-
-	/* check if device is CLOCK_REALTIME */
-	if (!strcasecmp(device, "CLOCK_REALTIME"))
-		return CLOCK_REALTIME;
-
-	/* check if device is valid phc device */
-	clkid = phc_open(device);
-	if (clkid != CLOCK_INVALID)
-		return clkid;
-
-	/* check if device is a valid ethernet device */
-	if (sk_get_ts_info(device, &ts_info) || !ts_info.valid) {
-		fprintf(stderr, "unknown clock %s: %m\n", device);
-		return CLOCK_INVALID;
-	}
-
-	if (ts_info.phc_index < 0) {
-		fprintf(stderr, "interface %s does not have a PHC\n", device);
-		return CLOCK_INVALID;
-	}
-
-	sprintf(phc_device, "/dev/ptp%d", ts_info.phc_index);
-	clkid = phc_open(phc_device);
-	if (clkid == CLOCK_INVALID)
-		fprintf(stderr, "cannot open %s: %m\n", device);
-	*phc_index = ts_info.phc_index;
-	return clkid;
-}
+#include "_phc.c"
 
 static struct servo *servo_add(struct node *node, struct clock *clock)
 {
@@ -179,8 +157,7 @@ static struct servo *servo_add(struct node *node, struct clock *clock)
 		}
 	}
 
-	servo = servo_create(phc2sys_config, node->servo_type,
-			     -ppb, max_ppb, 0);
+	servo = servo_create(phc2sys_config, node->servoType, -ppb, max_ppb, 0);
 	if (!servo) {
 		pr_err("Failed to create servo");
 		return NULL;
@@ -255,7 +232,8 @@ static void clock_cleanup(struct node *node)
 {
 	struct clock *c, *tmp;
 
-	LIST_FOREACH_SAFE(c, &node->clocks, list, tmp) {
+	LIST_FOREACH_SAFE(c, &node->clocks, list, tmp)
+	{
 		if (c->servo) {
 			servo_destroy(c->servo);
 		}
@@ -298,8 +276,7 @@ static struct port *port_get(struct node *node, unsigned int number)
 	return NULL;
 }
 
-static struct port *port_add(struct node *node, unsigned int number,
-			     char *device)
+static struct port *port_add(struct node *node, unsigned int number, char *device)
 {
 	struct port *p;
 	struct clock *c = NULL, *tmp;
@@ -512,9 +489,10 @@ static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
 
 	/* Pick the quickest clkid reading. */
 	for (i = 0; i < readings; i++) {
-		if (clock_gettime(sysclk, &tdst1) ||
-				clock_gettime(clkid, &tsrc) ||
-				clock_gettime(sysclk, &tdst2)) {
+		if (PTP_GET_SYS_TIME_NOW(sysclk, &tdst1) ||
+				PTP_GET_SYS_TIME_NOW(clkid, &tsrc) ||
+				PTP_GET_SYS_TIME_NOW(sysclk, &tdst2))
+		{
 			pr_err("failed to read clock: %m");
 			return 0;
 		}
@@ -740,7 +718,8 @@ static int do_loop(struct node *node, int subscriptions)
 	interval.tv_sec = node->phc_interval;
 	interval.tv_nsec = (node->phc_interval - interval.tv_sec) * 1e9;
 
-	while (is_running()) {
+	while (is_running())
+	{
 		clock_nanosleep(CLOCK_MONOTONIC, 0, &interval, NULL);
 		if (update_pmc(node, subscriptions) < 0)
 			continue;
@@ -912,15 +891,16 @@ static void send_subscription(struct node *node)
 	pmc_send_set_action(node->pmc, TLV_SUBSCRIBE_EVENTS_NP, &sen, sizeof(sen));
 }
 
-static int init_pmc(struct config *cfg, struct node *node)
+static int init_pmc(struct PtpConfig *cfg, struct node *node)
 {
 	char uds_local[MAX_IFNAME_SIZE + 1];
 
-	snprintf(uds_local, sizeof(uds_local), "/var/run/phc2sys.%d", getpid());
-	node->pmc = pmc_create(cfg, TRANS_UDS, uds_local, 0,
+	snprintf(uds_local, sizeof(uds_local), PHC_SYS_UNIX_SOCKET".%d", getpid());
+	node->pmc = pmc_create(cfg, TRANS_UDS, uds_local, 0, 
 			       config_get_int(cfg, NULL, "domainNumber"),
 			       config_get_int(cfg, NULL, "transportSpecific") << 4, 1);
-	if (!node->pmc) {
+	if (!node->pmc)
+	{
 		pr_err("failed to create pmc");
 		return -1;
 	}
@@ -934,24 +914,28 @@ static int init_pmc(struct config *cfg, struct node *node)
  * -1: error reported by the other side
  * -2: local error, fatal
  */
-static int run_pmc(struct node *node, int timeout, int ds_id,
-		   struct ptp_message **msg)
+static int run_pmc(struct node *node, int timeout, int datasetId, struct ptp_message **msg)
 {
 #define N_FD 1
 	struct pollfd pollfd[N_FD];
 	int cnt, res;
 
-	while (1) {
+	EXT_DEBUGF(PHC_SYS_DEBUG, "send dataset 0x%x...", datasetId);
+	while (1)
+	{
 		pollfd[0].fd = pmc_get_transport_fd(node->pmc);
 		pollfd[0].events = POLLIN|POLLPRI;
-		if (!node->pmc_ds_requested && ds_id >= 0)
+		
+		if (!node->pmc_ds_requested && datasetId >= 0)
 			pollfd[0].events |= POLLOUT;
 
 		cnt = poll(pollfd, N_FD, timeout);
-		if (cnt < 0) {
+		if (cnt < 0)
+		{
 			pr_err("poll failed");
 			return -2;
 		}
+		
 		if (!cnt) {
 			/* Request the data set again in the next run. */
 			node->pmc_ds_requested = 0;
@@ -959,15 +943,16 @@ static int run_pmc(struct node *node, int timeout, int ds_id,
 		}
 
 		/* Send a new request if there are no pending messages. */
-		if ((pollfd[0].revents & POLLOUT) &&
-		    !(pollfd[0].revents & (POLLIN|POLLPRI))) {
-			switch (ds_id) {
-			case TLV_SUBSCRIBE_EVENTS_NP:
-				send_subscription(node);
-				break;
-			default:
-				pmc_send_get_action(node->pmc, ds_id);
-				break;
+		if ((pollfd[0].revents & POLLOUT) && !(pollfd[0].revents & (POLLIN|POLLPRI)))
+		{
+			switch (datasetId)
+			{
+				case TLV_SUBSCRIBE_EVENTS_NP:
+					send_subscription(node);
+					break;
+				default:
+					pmc_send_get_action(node->pmc, datasetId);
+					break;
 			}
 			node->pmc_ds_requested = 1;
 		}
@@ -987,12 +972,12 @@ static int run_pmc(struct node *node, int timeout, int ds_id,
 		}
 
 		res = is_msg_mgt(*msg);
-		if (res < 0 && get_mgt_err_id(*msg) == ds_id) {
+		if (res < 0 && get_mgt_err_id(*msg) == datasetId) {
 			node->pmc_ds_requested = 0;
 			return -1;
 		}
-		if (res <= 0 || recv_subscribed(node, *msg, ds_id) ||
-		    get_mgt_id(*msg) != ds_id) {
+		if (res <= 0 || recv_subscribed(node, *msg, datasetId) ||get_mgt_id(*msg) != datasetId)
+		{
 			msg_put(*msg);
 			*msg = NULL;
 			continue;
@@ -1010,6 +995,7 @@ static int run_pmc_wait_sync(struct node *node, int timeout)
 	Enumeration8 portState;
 
 	while (1) {
+		PHC_SYS_DBG_DATASET(TLV_PORT_DATA_SET);
 		res = run_pmc(node, timeout, TLV_PORT_DATA_SET, &msg);
 		if (res <= 0)
 			return res;
@@ -1018,11 +1004,13 @@ static int run_pmc_wait_sync(struct node *node, int timeout)
 		portState = ((struct portDS *)data)->portState;
 		msg_put(msg);
 
-		switch (portState) {
-		case PS_MASTER:
-		case PS_SLAVE:
-			return 1;
+		switch (portState)
+		{
+			case PS_MASTER:
+			case PS_SLAVE:
+				return 1;
 		}
+		
 		/* try to get more data sets (for other ports) */
 		node->pmc_ds_requested = 1;
 	}
@@ -1034,6 +1022,7 @@ static int run_pmc_get_utc_offset(struct node *node, int timeout)
 	int res;
 	struct timePropertiesDS *tds;
 
+	PHC_SYS_DBG_DATASET(TLV_TIME_PROPERTIES_DATA_SET);
 	res = run_pmc(node, timeout, TLV_TIME_PROPERTIES_DATA_SET, &msg);
 	if (res <= 0)
 		return res;
@@ -1064,6 +1053,7 @@ static int run_pmc_get_number_ports(struct node *node, int timeout)
 	int res;
 	struct defaultDS *dds;
 
+	PHC_SYS_DBG_DATASET(TLV_DEFAULT_DATA_SET);
 	res = run_pmc(node, timeout, TLV_DEFAULT_DATA_SET, &msg);
 	if (res <= 0)
 		return res;
@@ -1079,6 +1069,7 @@ static int run_pmc_subscribe(struct node *node, int timeout)
 	struct ptp_message *msg;
 	int res;
 
+	PHC_SYS_DBG_DATASET(TLV_SUBSCRIBE_EVENTS_NP);
 	res = run_pmc(node, timeout, TLV_SUBSCRIBE_EVENTS_NP, &msg);
 	if (res <= 0)
 		return res;
@@ -1103,6 +1094,7 @@ static int run_pmc_port_properties(struct node *node, int timeout,
 
 	pmc_target_port(node->pmc, port);
 	while (1) {
+		PHC_SYS_DBG_DATASET(TLV_PORT_PROPERTIES_NP);
 		res = run_pmc(node, timeout, TLV_PORT_PROPERTIES_NP, &msg);
 		if (res <= 0)
 			goto out;
@@ -1136,13 +1128,13 @@ static int run_pmc_clock_identity(struct node *node, int timeout)
 	struct defaultDS *dds;
 	int res;
 
+	PHC_SYS_DBG_DATASET(TLV_DEFAULT_DATA_SET);
 	res = run_pmc(node, timeout, TLV_DEFAULT_DATA_SET, &msg);
 	if (res <= 0)
 		return res;
 
 	dds = (struct defaultDS *)get_mgt_data(msg);
-	memcpy(&node->clock_identity, &dds->clockIdentity,
-	       sizeof(struct ClockIdentity));
+	memcpy(&node->clock_identity, &dds->clockIdentity, sizeof(struct ClockIdentity));
 	node->clock_identity_set = 1;
 	msg_put(msg);
 	return 1;
@@ -1163,7 +1155,8 @@ static int auto_init_ports(struct node *node, int add_rt)
 	int state, timestamping;
 	char iface[IFNAMSIZ];
 
-	while (1) {
+	while (1)
+	{
 		if (!is_running())
 			return -1;
 		res = run_pmc_clock_identity(node, 1000);
@@ -1181,15 +1174,16 @@ static int auto_init_ports(struct node *node, int add_rt)
 		return -1;
 	}
 
+	EXT_DEBUGF(PHC_SYS_DEBUG, "ports=%d", number_ports);
 	res = run_pmc_subscribe(node, 1000);
 	if (res <= 0) {
 		pr_err("failed to subscribe");
 		return -1;
 	}
 
-	for (i = 1; i <= number_ports; i++) {
-		res = run_pmc_port_properties(node, 1000, i, &state,
-					      &timestamping, iface);
+	for (i = 1; i <= number_ports; i++)
+	{
+		res = run_pmc_port_properties(node, 1000, i, &state, &timestamping, iface);
 		if (res == -1) {
 			/* port does not exist, ignore the port */
 			continue;
@@ -1198,16 +1192,22 @@ static int auto_init_ports(struct node *node, int add_rt)
 			pr_err("failed to get port properties");
 			return -1;
 		}
-		if (timestamping == TS_SOFTWARE) {
+		
+		if (timestamping == TS_SOFTWARE)
+		{
 			/* ignore ports with software time stamping */
+			EXT_INFOF("Software TS, ignored");
 			continue;
 		}
+		
 		port = port_add(node, i, iface);
 		if (!port)
 			return -1;
 		port->state = normalize_state(state);
 	}
-	if (LIST_EMPTY(&node->clocks)) {
+
+	if (LIST_EMPTY(&node->clocks))
+	{
 		pr_err("no suitable ports available");
 		return -1;
 	}
@@ -1238,15 +1238,15 @@ static int update_pmc(struct node *node, int subscribe)
 	struct timespec tp;
 	uint64_t ts;
 
-	if (clock_gettime(CLOCK_MONOTONIC, &tp)) {
+	if (PTP_GET_SYS_TIME_MONOTONIC(&tp))
+	{
 		pr_err("failed to read clock: %m");
 		return -1;
 	}
 	ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
 
-	if (node->pmc &&
-	    !(ts > node->pmc_last_update &&
-	      ts - node->pmc_last_update < PMC_UPDATE_INTERVAL)) {
+	if (node->pmc && !(ts > node->pmc_last_update && ts - node->pmc_last_update < PMC_UPDATE_INTERVAL))
+	{
 		if (subscribe)
 			run_pmc_subscribe(node, 0);
 		if (run_pmc_get_utc_offset(node, 0) > 0)
@@ -1270,7 +1270,9 @@ static int clock_handle_leap(struct node *node, struct clock *clock,
 		   it is the clock which will include the leap second. */
 		if (node->master->is_utc) {
 			struct timespec tp;
-			if (clock_gettime(node->master->clkid, &tp)) {
+
+			if (PTP_GET_SYS_TIME_NOW(node->master->clkid, &tp))
+			{
 				pr_err("failed to read clock: %m");
 				return -1;
 			}
@@ -1343,7 +1345,7 @@ static void usage(char *progname)
 		" -u [num]       number of clock updates in summary stats (0)\n"
 		" -n [num]       domain number (0)\n"
 		" -x             apply leap seconds by servo instead of kernel\n"
-		" -z [path]      server address for UDS (/var/run/ptp4l)\n"
+		" -z [path]      server address for UDS ("PTP_RUN_HOME"/ptp4l)\n"
 		" -l [num]       set the logging level to 'num' (6)\n"
 		" -t [tag]       add tag to log messages\n"
 		" -m             print messages to stdout\n"
@@ -1358,11 +1360,12 @@ int main(int argc, char *argv[])
 {
 	char *config = NULL, *dst_name = NULL, *progname, *src_name = NULL;
 	struct clock *src, *dst;
-	struct config *cfg;
+	struct PtpConfig *cfg;
 	struct option *opts;
 	int autocfg = 0, c, domain_number = 0, index, ntpshm_segment;
 	int pps_fd = -1, print_level = LOG_INFO, r = -1, rt = 0, wait_sync = 0;
 	double phc_rate, tmp;
+	
 	struct node node = {
 		.phc_readings = 5,
 		.phc_interval = 1.0,
@@ -1383,10 +1386,11 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt_long(argc, argv,
-				"arc:d:f:s:E:P:I:S:F:R:N:O:L:M:i:u:wn:xz:l:t:mqvh",
-				opts, &index))) {
-		switch (c) {
+	
+	while (EOF != (c = getopt_long(argc, argv, "arc:d:f:s:E:P:I:S:F:R:N:O:L:M:i:u:wn:xz:l:t:mqvh", opts, &index)))
+	{
+		switch (c)
+		{
 		case 0:
 			if (config_parse_option(cfg, opts[index].name, optarg)) {
 				goto bad_usage;
@@ -1420,18 +1424,21 @@ int main(int argc, char *argv[])
 			src_name = strdup(optarg);
 			break;
 		case 'E':
-			if (!strcasecmp(optarg, "pi")) {
-				config_set_int(cfg, "clock_servo",
-					       CLOCK_SERVO_PI);
-			} else if (!strcasecmp(optarg, "linreg")) {
-				config_set_int(cfg, "clock_servo",
-					       CLOCK_SERVO_LINREG);
-			} else if (!strcasecmp(optarg, "ntpshm")) {
-				config_set_int(cfg, "clock_servo",
-					       CLOCK_SERVO_NTPSHM);
-			} else {
-				fprintf(stderr,
-					"invalid servo name %s\n", optarg);
+			if (!strcasecmp(optarg, "pi"))
+			{
+				config_set_int(cfg, "clock_servo", CLOCK_SERVO_PI);
+			}
+			else if (!strcasecmp(optarg, "linreg"))
+			{
+				config_set_int(cfg, "clock_servo", CLOCK_SERVO_LINREG);
+			}
+			else if (!strcasecmp(optarg, "ntpshm"))
+			{
+				config_set_int(cfg, "clock_servo", CLOCK_SERVO_NTPSHM);
+			}
+			else
+			{
+				fprintf(stderr, 	"invalid servo name %s\n", optarg);
 				goto end;
 			}
 			break;
@@ -1550,23 +1557,21 @@ int main(int argc, char *argv[])
 	}
 
 	if (autocfg && (src_name || dst_name || pps_fd >= 0 || wait_sync || node.forced_sync_offset)) {
-		fprintf(stderr,
-			"autoconfiguration cannot be mixed with manual config options.\n");
+		fprintf(stderr, 	"autoconfiguration cannot be mixed with manual config options.\n");
 		goto bad_usage;
 	}
 	if (!autocfg && pps_fd < 0 && !src_name) {
-		fprintf(stderr,
-			"autoconfiguration or valid source clock must be selected.\n");
+		fprintf(stderr,	"autoconfiguration or valid source clock must be selected.\n");
 		goto bad_usage;
 	}
 
 	if (!autocfg && !wait_sync && !node.forced_sync_offset) {
-		fprintf(stderr,
-			"time offset must be specified using -w or -O\n");
+		fprintf(stderr,	"time offset must be specified using -w or -O\n");
 		goto bad_usage;
 	}
 
-	if (node.servo_type == CLOCK_SERVO_NTPSHM) {
+	if (node.servoType == CLOCK_SERVO_NTPSHM)
+	{
 		node.kernel_leap = 0;
 		node.sanity_freq_limit = 0;
 	}
@@ -1577,15 +1582,18 @@ int main(int argc, char *argv[])
 	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
-	node.servo_type = config_get_int(cfg, NULL, "clock_servo");
-	if (node.servo_type == CLOCK_SERVO_NTPSHM) {
+	node.servoType = config_get_int(cfg, NULL, "clock_servo");
+	if (node.servoType == CLOCK_SERVO_NTPSHM)
+	{
 		config_set_int(cfg, "kernel_leap", 0);
 		config_set_int(cfg, "sanity_freq_limit", 0);
 	}
 	node.kernel_leap = config_get_int(cfg, NULL, "kernel_leap");
 	node.sanity_freq_limit = config_get_int(cfg, NULL, "sanity_freq_limit");
 
-	if (autocfg) {
+	if (autocfg)
+	{
+		EXT_INFOF("Working as auto...");
 		if (init_pmc(cfg, &node))
 			goto end;
 		if (auto_init_ports(&node, rt) < 0)
@@ -1594,11 +1602,12 @@ int main(int argc, char *argv[])
 		goto end;
 	}
 
+TRACE();
 	src = clock_add(&node, src_name);
 	free(src_name);
-	if (!src) {
-		fprintf(stderr,
-			"valid source clock must be selected.\n");
+	if (!src)
+	{
+		fprintf(stderr, 	"valid source clock must be selected.\n");
 		goto bad_usage;
 	}
 	src->state = PS_SLAVE;
@@ -1622,7 +1631,9 @@ int main(int argc, char *argv[])
 
 	r = -1;
 
-	if (wait_sync) {
+TRACE();
+	if (wait_sync)
+	{
 		if (init_pmc(cfg, &node))
 			goto end;
 
@@ -1672,3 +1683,4 @@ bad_usage:
 	config_destroy(cfg);
 	return -1;
 }
+

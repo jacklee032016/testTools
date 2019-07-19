@@ -37,8 +37,9 @@
 
 #include "sk.h"
 #include "util.h"
+#include "extPtp.h"
 
-#define DEFAULT_RUNDIR "/var/run/timemaster"
+#define DEFAULT_RUNDIR		PTP_RUN_HOME"/timemaster"
 
 #define DEFAULT_FIRST_SHM_SEGMENT 0
 #define DEFAULT_RESTART_PROCESSES 1
@@ -1128,7 +1129,7 @@ static int script_run(struct script *script)
 		}
 	}
 
-	clock_gettime(CLOCK_MONOTONIC, &ts_start);
+	PTP_GET_SYS_TIME_MONOTONIC( &ts_start);
 
 	/* process the blocked signals */
 	while (1) {
@@ -1139,7 +1140,7 @@ static int script_run(struct script *script)
 			break;
 		}
 
-		clock_gettime(CLOCK_MONOTONIC, &ts_now);
+		PTP_GET_SYS_TIME_MONOTONIC( &ts_now);
 
 		if (info.si_signo != SIGCHLD) {
 			if (quit)

@@ -32,12 +32,13 @@
  * @tx_types:         driver level transmit options for the HWTSTAMP ioctl.
  * @rx_filters:       driver level receive options for the HWTSTAMP ioctl.
  */
-struct sk_ts_info {
-	int valid;
-	int phc_index;
-	unsigned int so_timestamping;
-	unsigned int tx_types;
-	unsigned int rx_filters;
+struct sk_ts_info
+{
+	int				valid;
+	int				phc_index;
+	unsigned int		so_timestamping;
+	unsigned int		tx_types;
+	unsigned int		rx_filters;
 };
 
 /**

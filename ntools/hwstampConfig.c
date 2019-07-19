@@ -1,7 +1,6 @@
 
 /* Test program for SIOC{G,S}HWTSTAMP
- * Copyright 2013 Solarflare Communications
- * Author: Ben Hutchings
+ * refer to Documents/networking/timestamping.txt, section 3
  */
 
 #include <errno.h>
@@ -13,8 +12,12 @@
 #include <sys/ioctl.h>
 
 #include <linux/if.h>
-#include <linux/net_tstamp.h>
+#include <linux/net_tstamp.h>	/* hw timestamp_config etc. */
 #include <linux/sockios.h>
+
+#include <arpa/inet.h>	/* IPPROTO_UDP */
+
+#include "extLog.h"
 
 static int lookup_value(const char **names, int size, const char *name)
 {
@@ -71,13 +74,12 @@ static const char *rx_filters[] = {
 };
 #define N_RX_FILTERS ((int)(sizeof(rx_filters) / sizeof(rx_filters[0])))
 
-static void usage(void)
+static void usage(char *progm)
 {
-	fputs("Usage: hwtstamp_config if_name [tx_type rx_filter]\n"
-	      "tx_type is any of (case-insensitive):\n",
-	      stderr);
+	EXT_ERRORF("Usage: %s if_name [tx_type rx_filter]\n"
+	      "tx_type is any of (case-insensitive):", progm );
 	list_names(stderr, tx_types, N_TX_TYPES);
-	fputs("rx_filter is any of (case-insensitive):\n", stderr);
+	EXT_ERRORF("rx_filter is any of (case-insensitive):" );
 	list_names(stderr, rx_filters, N_RX_FILTERS);
 }
 
@@ -88,46 +90,60 @@ int main(int argc, char **argv)
 	const char *name;
 	int sock;
 
-	if ((argc != 2 && argc != 4) || (strlen(argv[1]) >= IFNAMSIZ)) {
-		usage();
+	if ((argc != 2 && argc != 4) || (strlen(argv[1]) >= IFNAMSIZ))
+	{
+		usage(argv[0] );
 		return 2;
 	}
 
-	if (argc == 4) {
+	if (argc == 4)
+	{
 		config.flags = 0;
 		config.tx_type = lookup_value(tx_types, N_TX_TYPES, argv[2]);
 		config.rx_filter = lookup_value(rx_filters, N_RX_FILTERS, argv[3]);
-		if (config.tx_type < 0 || config.rx_filter < 0) {
-			usage();
+		if (config.tx_type < 0 || config.rx_filter < 0)
+		{
+			usage(argv[0]);
 			return 2;
 		}
 	}
 
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
-	if (sock < 0) {
-		perror("socket");
+//	sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (sock < 0)
+	{
+		perror("socket: %m");
 		return 1;
 	}
 
 	strcpy(ifr.ifr_name, argv[1]);
 	ifr.ifr_data = (caddr_t)&config;
-
-	if (ioctl(sock, (argc == 2) ? SIOCGHWTSTAMP : SIOCSHWTSTAMP, &ifr)) {
-		perror("ioctl");
+	if (ioctl(sock, (argc == 2) ? SIOCGHWTSTAMP : SIOCSHWTSTAMP, &ifr))
+	{
+		EXT_ERRORF("ioctl: %m");
 		return 1;
 	}
 
-	printf("flags = %#x\n", config.flags);
+	EXT_INFOF("%s flags = %#x", (argc==2)?"Get(SIOCGHWTSTAMP)":"Set(SIOCSHWTSTAMP)", config.flags);
 	name = lookup_name(tx_types, N_TX_TYPES, config.tx_type);
 	if (name)
-		printf("tx_type = %s\n", name);
+	{
+		EXT_INFOF("tx_type = %s", name);
+	}
 	else
-		printf("tx_type = %d\n", config.tx_type);
+	{
+		EXT_INFOF("tx_type = %d", config.tx_type);
+	}
+	
 	name = lookup_name(rx_filters, N_RX_FILTERS, config.rx_filter);
 	if (name)
-		printf("rx_filter = %s\n", name);
+	{
+		EXT_INFOF("rx_filter = %s", name);
+	}
 	else
-		printf("rx_filter = %d\n", config.rx_filter);
+	{
+		EXT_INFOF("rx_filter = %d", config.rx_filter);
+	}
 
 	return 0;
 }

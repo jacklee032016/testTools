@@ -23,7 +23,7 @@ ifdef CODE_SUBDIRS
 endif
 
 $(BIN_DIR):
-	-if [ -d $(BIN_DIR) ] ; then : ; else $(MKDIR) $(BIN_DIR)/bin;$(MKDIR) $(BIN_DIR)/lib;fi
+	-if [ -d $(BIN_DIR) ] ; then : ; else $(MKDIR) $(BIN_DIR)/bin;$(MKDIR) $(BIN_DIR)/sbin;$(MKDIR) $(BIN_DIR)/lib;fi
 #	$(ROOT_DIR)/scripting/installdir.sh $(BIN_DIR); fi
 #ifdef CODE_SUBDIRS
 #	-@ for subdir in $(CODE_SUBDIRS) ; do ( mkdir -p $(BIN_DIR)/$$subdir ) ; done
@@ -53,7 +53,7 @@ $(TARGET_LIB_SHARED):$(OBJS)
 $(TARGET_LIB_STATIC):$(OBJS)  
 	$(AR) $(ARFLAGS) $@ $^ 
 	$(RANLIB) $@
-	mv $(TARGET_LIB_STATIC) $(BIN_DIR)/lib
+	$(MOVE) $(TARGET_LIB_STATIC) $(BIN_DIR)/lib
 
 ######## $(CFLAGS) 
 # $(OBJ_DIR)/%.o:%.cpp $(OBJ_DIR)/%.d 

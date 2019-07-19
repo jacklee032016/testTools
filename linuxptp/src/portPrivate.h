@@ -65,38 +65,40 @@ struct PtpPort
 	struct transport			*trp;
 	
 	enum timestamp_type		timestamping;
-	struct fdarray fda;
+	struct FdArray			fda;
 
-	int fault_fd;
-	int phc_index;
+	int						fault_fd;		/* fd of CLOCK_MONOLITHIC */
+	int						phc_index;	/* index of /dev/ptp */
 
 	void (*dispatch)(struct PtpPort *p, enum PORT_EVENT event, int mdiff);
+	/* get event from fd polled */
 	enum PORT_EVENT (*event)(struct PtpPort *p, int fd_index);
 
-	int jbod;
+	int							jbod;
 	struct foreign_clock			*best;
 	enum SyncFollowupState		syfu;
 	struct ptp_message			*last_syncfup;
 
 	/* peer delay messages, only used in transparent clock  */
-	struct ptp_message *peer_delay_req;
-	struct ptp_message *peer_delay_resp;
-	struct ptp_message *peer_delay_fup;
-	int peer_portid_valid;
-	struct PortIdentity peer_portid;
+	struct ptp_message			*peer_delay_req;
+	struct ptp_message			*peer_delay_resp;
+	struct ptp_message			*peer_delay_fup;
+	int							peer_portid_valid;
+	struct PortIdentity				peer_portid;
 	
 	struct
 	{
-		UInteger16 announce;
-		UInteger16 delayreq;
-		UInteger16 signaling;
-		UInteger16 sync;
+		UInteger16		announce;
+		UInteger16		delayreq;
+		UInteger16		signaling;
+		UInteger16		sync;
 	} seqnum;
 	
 	tmv_t	peer_delay;
 
-	struct TimestampProcess *tsproc;
-	int log_sync_interval;
+
+	struct TimestampProcess		*tsproc;
+	int							log_sync_interval;
 	struct nrate_estimator nrate;
 	unsigned int pdr_missing;
 	unsigned int multiple_seq_pdr_count;
@@ -105,8 +107,8 @@ struct PtpPort
 	enum PORT_STATE (*state_machine)(enum PORT_STATE state, enum PORT_EVENT event, int mdiff);
 
 	/* portDS */
-	struct PortIdentity		portIdentity;
-	enum PORT_STATE     state; /*portState*/
+	struct PortIdentity				portIdentity;
+	enum PORT_STATE			state; /*portState*/
 	Integer64           asymmetry;
 	int                 asCapable;
 	Integer8            logMinDelayReqInterval;
@@ -134,13 +136,13 @@ struct PtpPort
 	Integer64           tx_timestamp_offset;
 	int                 unicast_req_duration;
 	
-	enum link_state     link_status;
+	enum link_state			link_status;
 	struct fault_interval flt_interval_pertype[FT_CNT];
 	enum fault_type     last_fault_type;
 	unsigned int        versionNumber; /*UInteger4*/
 	
 	/* unicast client mode */
-	struct unicast_master_table *unicast_master_table;
+	struct unicast_master_table			*unicast_master_table;
 	/* unicast service mode */
 	struct unicast_service *unicast_service;
 	int inhibit_multicast_service;
@@ -150,6 +152,7 @@ struct PtpPort
 	
 	/* foreignMasterDS */
 	LIST_HEAD(fm, foreign_clock)			foreign_masters;
+	
 	/* TC book keeping */
 	TAILQ_HEAD(tct, tc_txd)				tc_transmitted;
 
@@ -234,8 +237,8 @@ int port_fault_fd(struct PtpPort *port)
  * @return	Array of file descriptors. Unused descriptors are guranteed
  *		to be set to -1.
  */
-struct fdarray *port_fda(struct PtpPort *port);
-struct fdarray *port_fda(struct PtpPort *port)
+struct FdArray *port_fda(struct PtpPort *port);
+struct FdArray *port_fda(struct PtpPort *port)
 {
 	return &port->fda;
 }

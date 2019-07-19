@@ -59,7 +59,7 @@ static void clock_update_slave(struct PtpClock *c)
 
 static void __fillPollfd(struct pollfd *dest, struct PtpPort *p)
 {
-	struct fdarray *fda;
+	struct FdArray *fda;
 	int i;
 
 	fda = port_fda(p);
@@ -80,10 +80,12 @@ static void _checkPollfd(struct PtpClock *c)
 		return;
 	}
 	
-	LIST_FOREACH(p, &c->clkPorts, list) {
+	LIST_FOREACH(p, &c->clkPorts, list)
+	{
 		__fillPollfd(dest, p);
 		dest += N_CLOCK_PFD;
 	}
+	
 	__fillPollfd(dest, c->uds_port);
 	c->pollfd_valid = 1;
 }

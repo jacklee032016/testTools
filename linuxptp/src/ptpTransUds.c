@@ -39,7 +39,7 @@ struct UDS
 	struct address	address;
 };
 
-static int _udsClose(struct transport *t, struct fdarray *fda)
+static int _udsClose(struct transport *t, struct FdArray *fda)
 {
 	struct sockaddr_un sa;
 	socklen_t len = sizeof(sa);
@@ -53,7 +53,7 @@ static int _udsClose(struct transport *t, struct fdarray *fda)
 	return 0;
 }
 
-static int _udsOpen(struct transport *t, struct PtpInterface *iface, struct fdarray *fda, enum timestamp_type tt)
+static int _udsOpen(struct transport *t, struct PtpInterface *iface, struct FdArray *fda, enum timestamp_type tt)
 {
 	int fd, err;
 	struct sockaddr_un sa;
@@ -77,7 +77,7 @@ static int _udsOpen(struct transport *t, struct PtpInterface *iface, struct fdar
 	err = bind(fd, (struct sockaddr *) &sa, sizeof(sa));
 	if (err < 0)
 	{
-		pr_err("uds: bind failed: %m");
+		pr_err("uds: bind to %s failed: %m", name);
 		close(fd);
 		return -1;
 	}
@@ -114,7 +114,7 @@ static int _udsRecv(struct transport *t, int fd, void *buf, int buflen, struct a
 	return cnt;
 }
 
-static int _udsSend(struct transport *t, struct fdarray *fda, 
+static int _udsSend(struct transport *t, struct FdArray *fda, 
 		    enum transport_event event, int peer, void *buf, int buflen,
 		    struct address *addr, struct hw_timestamp *hwts)
 {

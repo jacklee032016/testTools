@@ -41,6 +41,7 @@ typedef uint8_t   Octet;
 
 #define MAX_IFNAME_SIZE 108 /* = UNIX_PATH_MAX */
 
+#define NS_PER_SEC 1000000000LL
 
 /**
  * Defines the possible delay mechanisms.
@@ -83,7 +84,8 @@ enum NOTIFICATION
  * when the DELAY timer and one of the other two expire during the
  * same call to poll().
  */
-enum {
+enum
+{
 	FD_EVENT,
 	FD_GENERAL,
 	FD_DELAY_TIMER,
@@ -98,9 +100,10 @@ enum {
 	N_POLLFD,
 };
 
+
 #define FD_FIRST_TIMER FD_DELAY_TIMER
 
-struct fdarray
+struct FdArray
 {
 	int fd[N_POLLFD];
 };
@@ -481,15 +484,15 @@ void print_set_verbose(int value);
 #define pr_info(x...)    print(LOG_INFO, x)
 #define pr_debug(x...)   print(LOG_DEBUG, x)
 #else
-#define pr_emerg(x,...)		EXT_ERROR(x, ##__VA_ARGS__)
-#define pr_alert(x,...)			EXT_ERROR(x, ##__VA_ARGS__)
-#define pr_crit(x,...)			EXT_ERROR(x, ##__VA_ARGS__)
-#define pr_err(x,...)			EXT_ERROR(x, ##__VA_ARGS__)
-#define pr_warning(x,...)		EXT_INFO(x, ##__VA_ARGS__)
-#define pr_notice(x,...)		EXT_INFO(x, ##__VA_ARGS__)
-#define pr_info(x,...)			EXT_INFO(x, ##__VA_ARGS__)
-#define pr_debug(x,...)		EXT_DEBUG(EXT_DBG_ON, x, ##__VA_ARGS__)
-//#define pr_debug(x...)   EXT_INFO( x)
+#define pr_emerg(x,...)		EXT_ERRORF(x, ##__VA_ARGS__)
+#define pr_alert(x,...)			EXT_ERRORF(x, ##__VA_ARGS__)
+#define pr_crit(x,...)			EXT_ERRORF(x, ##__VA_ARGS__)
+#define pr_err(x,...)			EXT_ERRORF(x, ##__VA_ARGS__)
+#define pr_warning(x,...)		EXT_INFOF(x, ##__VA_ARGS__)
+#define pr_notice(x,...)		EXT_INFOF(x, ##__VA_ARGS__)
+#define pr_info(x,...)			EXT_INFOF(x, ##__VA_ARGS__)
+#define pr_debug(x,...)		EXT_DEBUGF(EXT_DBG_ON, x, ##__VA_ARGS__)
+//#define pr_debug(x...)   EXT_INFOF( x)
 #endif
 
 
@@ -726,6 +729,25 @@ int stats_get_result(struct stats *stats, struct stats_result *result);
  * @param stats Pointer to stats obtained via @ref stats_create().
  */
 void stats_reset(struct stats *stats);
+
+#define	PTP_GET_SYS_TIME_NOW(clockId, timeSpecNow)		\
+			clock_gettime(clockId, (timeSpecNow) )
+
+
+/*
+* the timevalue can be jump forwards and backwards as the system time-of-day clock is changed, including by NTP
+*/
+#define	PTP_GET_SYS_TIME_REALTIME( timeSpecNow)		\
+			PTP_GET_SYS_TIME_NOW(CLOCK_REALTIME, (timeSpecNow) )
+
+
+/*
+* monotonic clock, is wall time, the time is continual, no matter time_of_day is changed or not;
+* so it is used to measure how long one event has happened
+*/
+#define	PTP_GET_SYS_TIME_MONOTONIC( timeSpecNow)		\
+			PTP_GET_SYS_TIME_NOW(CLOCK_MONOTONIC, (timeSpecNow) )
+			
 
 #endif
 

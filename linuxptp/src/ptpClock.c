@@ -370,26 +370,29 @@ int clock_required_modes(struct PtpClock *c)
 {
 	int required_modes = 0;
 
-	switch (c->timestamping) {
-	case TS_SOFTWARE:
-		required_modes |= SOF_TIMESTAMPING_TX_SOFTWARE |
-			SOF_TIMESTAMPING_RX_SOFTWARE |
-			SOF_TIMESTAMPING_SOFTWARE;
-		break;
-	case TS_LEGACY_HW:
-		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
-			SOF_TIMESTAMPING_RX_HARDWARE |
-			SOF_TIMESTAMPING_SYS_HARDWARE;
-		break;
-	case TS_HARDWARE:
-	case TS_ONESTEP:
-	case TS_P2P1STEP:
-		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
-			SOF_TIMESTAMPING_RX_HARDWARE |
-			SOF_TIMESTAMPING_RAW_HARDWARE;
-		break;
-	default:
-		break;
+	switch (c->timestamping)
+	{
+		case TS_SOFTWARE:
+			required_modes |= SOF_TIMESTAMPING_TX_SOFTWARE |
+				SOF_TIMESTAMPING_RX_SOFTWARE |
+				SOF_TIMESTAMPING_SOFTWARE; /* timerstamp reporting, software */
+			break;
+			
+		case TS_LEGACY_HW:
+			required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
+				SOF_TIMESTAMPING_RX_HARDWARE |
+				SOF_TIMESTAMPING_SYS_HARDWARE;/* timerstamp reporting, deprecated */
+			break;
+			
+		case TS_HARDWARE:
+		case TS_ONESTEP:
+		case TS_P2P1STEP:
+			required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
+				SOF_TIMESTAMPING_RX_HARDWARE |
+				SOF_TIMESTAMPING_RAW_HARDWARE;/* timerstamp reporting, hardware */
+			break;
+		default:
+			break;
 	}
 
 	return required_modes;

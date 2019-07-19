@@ -43,7 +43,9 @@
 #include "sk.h"
 #include "util.h"
 
-#define NSEC2SEC 1000000000.0
+#define NSEC2SEC	1000000000.0
+
+#include "_phc.c"
 
 /* trap the alarm signal so that pause() will wake up on receipt */
 static void handle_alarm(int s)
@@ -85,14 +87,12 @@ static int install_handler(int signum, void(*handler)(int))
 	return 0;
 }
 
-static int64_t calculate_offset(struct timespec *ts1,
-				      struct timespec *rt,
-				      struct timespec *ts2)
+static int64_t calculate_offset(struct timespec *ts1, struct timespec *rt, struct timespec *ts2)
 {
 	int64_t interval;
 	int64_t offset;
 
-#define NSEC_PER_SEC 1000000000ULL
+#define NSEC_PER_SEC	1000000000ULL
 	/* calculate interval between clock realtime */
 	interval = (ts2->tv_sec - ts1->tv_sec) * NSEC_PER_SEC;
 	interval += ts2->tv_nsec - ts1->tv_nsec;
@@ -103,39 +103,6 @@ static int64_t calculate_offset(struct timespec *ts1,
 	offset += (rt->tv_nsec - ts1->tv_nsec) - (interval / 2);
 
 	return offset;
-}
-
-static clockid_t clock_open(char *device)
-{
-	struct sk_ts_info ts_info;
-	char phc_device[19];
-	int clkid;
-
-	/* check if device is CLOCK_REALTIME */
-	if (!strcasecmp(device, "CLOCK_REALTIME"))
-		return CLOCK_REALTIME;
-
-	/* check if device is valid phc device */
-	clkid = phc_open(device);
-	if (clkid != CLOCK_INVALID)
-		return clkid;
-
-	/* check if device is a valid ethernet device */
-	if (sk_get_ts_info(device, &ts_info) || !ts_info.valid) {
-		pr_err("unknown clock %s: %m", device);
-		return CLOCK_INVALID;
-	}
-
-	if (ts_info.phc_index < 0) {
-		pr_err("interface %s does not have a PHC", device);
-		return CLOCK_INVALID;
-	}
-
-	sprintf(phc_device, "/dev/ptp%d", ts_info.phc_index);
-	clkid = phc_open(phc_device);
-	if (clkid == CLOCK_INVALID)
-		pr_err("cannot open %s for %s: %m", phc_device, device);
-	return clkid;
 }
 
 static void usage(const char *progname)
@@ -194,7 +161,7 @@ static int do_set(clockid_t clkid, int cmdc, char *cmdv[])
 	 * separator, then we run set as default parameter mode */
 	if (cmdc < 1 || name_is_a_command(cmdv[0]))
 	{
-		clock_gettime(CLOCK_REALTIME, &ts);
+		PTP_GET_SYS_TIME_REALTIME(&ts);
 
 		/* since we aren't using the options, we can simply ensure
 		 * that we don't eat any arguments
@@ -225,13 +192,14 @@ static int do_set(clockid_t clkid, int cmdc, char *cmdv[])
 		args_to_eat = 1;
 	}
 
-	if (clock_settime(clkid, &ts)) {
-		pr_err("set: failed to set clock time: %s",
-			strerror(errno));
+	if (clock_settime(clkid, &ts))
+	{
+		pr_err("set: failed to set clock time: %s", 	strerror(errno));
 		return -1;
-	} else {
-		pr_notice("set clock time to %ld.%09ld or %s",
-			ts.tv_sec, ts.tv_nsec, ctime(&ts.tv_sec));
+	}
+	else
+	{
+		pr_notice("set clock time to %ld.%09ld or %s", ts.tv_sec, ts.tv_nsec, ctime(&ts.tv_sec));
 	}
 
 	return args_to_eat;
@@ -242,7 +210,7 @@ static int do_get(clockid_t clkid, int cmdc, char *cmdv[])
 	struct timespec ts;
 
 	memset(&ts, 0, sizeof(ts));
-	if (clock_gettime(clkid, &ts))
+	if (PTP_GET_SYS_TIME_NOW(clkid, &ts))
 	{
 		pr_err("get: failed to get clock time: %s", strerror(errno));
 		return -1;
@@ -270,7 +238,8 @@ static int do_adj(clockid_t clkid, int cmdc, char *cmdv[])
 
 	/* parse the double time offset argument */
 	r = get_ranged_double(cmdv[0], &time_arg, -DBL_MAX, DBL_MAX);
-	switch (r) {
+	switch (r)
+	{
 		case PARSED_OK:
 			break;
 		case MALFORMED:
@@ -337,14 +306,15 @@ static int do_caps(clockid_t clkid, int cmdc, char *cmdv[])
 {
 	struct ptp_clock_caps caps;
 
-	if (clkid == CLOCK_REALTIME) {
+	if (clkid == CLOCK_REALTIME)
+	{
 		pr_warning("CLOCK_REALTIME is not a PHC device.");
 		return 0;
 	}
 
-	if (ioctl(CLOCKID_TO_FD(clkid), PTP_CLOCK_GETCAPS, &caps)) {
-		pr_err("get capabilities failed: %s",
-			strerror(errno));
+	if (ioctl(CLOCKID_TO_FD(clkid), PTP_CLOCK_GETCAPS, &caps))
+	{
+		pr_err("get capabilities failed: %s", strerror(errno));
 		return -1;
 	}
 
@@ -378,9 +348,9 @@ static int do_cmp(clockid_t clkid, int cmdc, char *cmdv[])
 	memset(&ts, 0, sizeof(ts));
 	memset(&ts, 0, sizeof(rta));
 	memset(&ts, 0, sizeof(rtb));
-	if (clock_gettime(CLOCK_REALTIME, &rta) ||
-	    clock_gettime(clkid, &ts) ||
-	    clock_gettime(CLOCK_REALTIME, &rtb))
+	if (PTP_GET_SYS_TIME_REALTIME(&rta) ||
+	    PTP_GET_SYS_TIME_NOW(clkid, &ts) ||
+	    PTP_GET_SYS_TIME_REALTIME(&rtb))
 	{
 		pr_err("cmp: failed clock reads: %s\n", strerror(errno));
 		return -1;
@@ -453,10 +423,9 @@ static cmd_func_t get_command_function(const char *name)
 	int i;
 	cmd_func_t cmd = NULL;
 
-	for (i = 0; all_commands[i].name != NULL; i++) {
-		if (!strncmp(name,
-			     all_commands[i].name,
-			     strlen(all_commands[i].name)))
+	for (i = 0; all_commands[i].name != NULL; i++)
+	{
+		if (!strncmp(name, all_commands[i].name, strlen(all_commands[i].name)))
 			cmd = all_commands[i].function;
 	}
 
@@ -501,6 +470,7 @@ int main(int argc, char *argv[])
 	int c, result, cmdc;
 	int print_level = LOG_INFO, verbose = 1, use_syslog = 1;
 	clockid_t clkid;
+	int	phcIndex = -1;
 
 	install_handler(SIGALRM, handle_alarm);
 
@@ -551,7 +521,7 @@ int main(int argc, char *argv[])
 		cmdc = argc - optind - 1;
 	}
 
-	clkid = clock_open(argv[optind]);
+	clkid = clock_open(argv[optind], &phcIndex);
 	if (clkid == CLOCK_INVALID)
 		return -1;
 

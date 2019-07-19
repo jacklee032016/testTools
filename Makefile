@@ -6,6 +6,8 @@ QEMU=YES
 
 NAME=testTools
 
+GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+
 ROOT_DIR:=$(shell pwd)
 RULE_DIR:=$(ROOT_DIR)
 #/../
@@ -14,6 +16,7 @@ RULE_DIR:=$(ROOT_DIR)
 
 export ROOT_DIR
 export RULE_DIR
+export GCC_COLORS
 
 EXTENSION=
 
@@ -37,7 +40,11 @@ export RELEASES_NAME
 SUBDIRS += linuxptp/src
 SUBDIRS += linuxptp/programs
 
- SUBDIRS += ntools
+# SUBDIRS += ethtool/src
+
+# SUBDIRS += ntools
+# SUBDIRS += ntools/timers
+
 # SUBDIRS += omtools
 
 

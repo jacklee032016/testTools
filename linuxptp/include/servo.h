@@ -22,7 +22,7 @@
 
 #include <stdint.h>
 
-struct config;
+struct PtpConfig;
 
 /** Opaque type */
 struct servo;
@@ -30,10 +30,11 @@ struct servo;
 /**
  * Defines the available servo cores
  */
-enum servo_type {
-	CLOCK_SERVO_PI,
-	CLOCK_SERVO_LINREG,
-	CLOCK_SERVO_NTPSHM,
+enum servo_type
+{
+	CLOCK_SERVO_PI,		/* PI contoller */
+	CLOCK_SERVO_LINREG,	/* linear regression */
+	CLOCK_SERVO_NTPSHM,	/* NTP SHM reference clock */
 	CLOCK_SERVO_NULLF,
 };
 
@@ -70,7 +71,7 @@ enum servo_state {
  *                and the servo should use more aggressive filtering.
  * @return A pointer to a new servo on success, NULL otherwise.
  */
-struct servo *servo_create(struct config *cfg, enum servo_type type,
+struct servo *servo_create(struct PtpConfig *cfg, enum servo_type type,
 			   int fadj, int max_ppb, int sw_ts);
 
 /**

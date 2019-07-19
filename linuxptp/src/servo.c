@@ -25,11 +25,11 @@
 #define NSEC_PER_SEC 1000000000
 
 struct servo *linreg_servo_create(int fadj);
-struct servo *pi_servo_create(struct config *cfg, int fadj, int sw_ts);
-struct servo *ntpshm_servo_create(struct config *cfg);
+struct servo *pi_servo_create(struct PtpConfig *cfg, int fadj, int sw_ts);
+struct servo *ntpshm_servo_create(struct PtpConfig *cfg);
 struct servo *nullf_servo_create(void);
 
-struct servo *servo_create(struct config *cfg, enum servo_type type, int fadj, int max_ppb, int sw_ts)
+struct servo *servo_create(struct PtpConfig *cfg, enum servo_type type, int fadj, int max_ppb, int sw_ts)
 {
 	double servo_first_step_threshold;
 	double servo_step_threshold;

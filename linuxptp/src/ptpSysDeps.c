@@ -91,8 +91,6 @@ int phc_has_pps(clockid_t clkid)
 #include <linux/ptp_clock.h>
 
 
-#define NS_PER_SEC 1000000000LL
-
 #ifdef PTP_SYS_OFFSET
 
 static int64_t pctns(struct ptp_clock_time *t)

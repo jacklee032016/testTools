@@ -24,6 +24,7 @@
 #include "portPrivate.h"
 #include "clockPrivate.h"
 
+/* IEEE 1588 */
 int dscmp2(struct dataset *a, struct dataset *b)
 {
 	int diff;
@@ -118,45 +119,7 @@ int dscmp(struct dataset *a, struct dataset *b)
 	return diff < 0 ? A_BETTER : B_BETTER;
 }
 
-
-enum PORT_STATE bmc_state_decision(struct PtpClock *c, struct PtpPort *r, int (*compare)(struct dataset *a, struct dataset *b))
-{
-	struct dataset *clock_ds, *clock_best, *port_best;
-	enum PORT_STATE ps;
-
-	clock_ds = clock_default_ds(c);
-	clock_best = clock_best_foreign(c);
-	port_best = port_best_foreign(r);
-	
-	ps = portState(r);
-
-	if (!port_best && PS_LISTENING == ps)
-		return ps;
-
-	if (clock_class(c) <= 127) {
-		if (compare(clock_ds, port_best) > 0) {
-			return PS_GRAND_MASTER; /*M1*/
-		} else {
-			return PS_PASSIVE; /*P1*/
-		}
-	}
-
-	if (compare(clock_ds, clock_best) > 0) {
-		return PS_GRAND_MASTER; /*M2*/
-	}
-
-	if (clock_best_port(c) == r) {
-		return PS_SLAVE; /*S1*/
-	}
-
-	if (compare(clock_best, port_best) == A_BETTER_TOPO) {
-		return PS_PASSIVE; /*P2*/
-	}
-	else {
-		return PS_MASTER; /*M3*/
-	}
-}
-
+/* G.8275.x algorithm */
 int telecom_dscmp(struct dataset *a, struct dataset *b)
 {
 	int diff;
@@ -204,5 +167,53 @@ int telecom_dscmp(struct dataset *a, struct dataset *b)
 		return dscmp2(a, b);
 
 	return diff < 0 ? A_BETTER : B_BETTER;
+}
+
+
+
+enum PORT_STATE bmc_state_decision(struct PtpClock *c, struct PtpPort *r, int (*compare)(struct dataset *a, struct dataset *b))
+{
+	struct dataset *clock_ds, *clock_best, *port_best;
+	enum PORT_STATE ps;
+
+	clock_ds = clock_default_ds(c);
+	clock_best = clock_best_foreign(c);
+	port_best = port_best_foreign(r);
+	
+	ps = portState(r);
+
+	if (!port_best && PS_LISTENING == ps)
+		return ps;
+
+	if (clock_class(c) <= 127)
+	{
+		if (compare(clock_ds, port_best) > 0)
+		{
+			return PS_GRAND_MASTER; /*M1*/
+		}
+		else
+		{
+			return PS_PASSIVE; /*P1*/
+		}
+	}
+
+	if (compare(clock_ds, clock_best) > 0)
+	{
+		return PS_GRAND_MASTER; /*M2*/
+	}
+
+	if (clock_best_port(c) == r)
+	{
+		return PS_SLAVE; /*S1*/
+	}
+
+	if (compare(clock_best, port_best) == A_BETTER_TOPO)
+	{
+		return PS_PASSIVE; /*P2*/
+	}
+	else
+	{
+		return PS_MASTER; /*M3*/
+	}
 }
 

@@ -20,7 +20,7 @@ SRC += \
 			util.c \
 			sk.c \
 			rtnl.c \
-			pmc_common.c \
+			ptpMgtClientCmn.c \
 			tlv.c \
 			tc.c \
 			msg.c \
@@ -46,7 +46,7 @@ SRC += \
 			ptpClockInit.c \
 			ptpClockMgmt.c \
 			ptpClockPoll.c \
-			ptpClockUtils.c \
+			ptpClockSubscription.c \
 			ptpTransport.c \
 			ptpTransRaw.c \
 			ptpTransUdp.c \

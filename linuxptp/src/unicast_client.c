@@ -180,7 +180,7 @@ static struct unicast_master_address *unicast_client_ok(struct PtpPort *p,
 		return NULL;
 	}
 	STAILQ_FOREACH(ucma, &p->unicast_master_table->addrs, list) {
-		if (addreq(transport_type(p->trp), &ucma->address, &m->address)) {
+		if (addreq(TransportType(p->trp), &ucma->address, &m->address)) {
 			break;
 		}
 	}
@@ -202,7 +202,7 @@ static int unicast_client_peer_renew(struct PtpPort *p)
 	if (!p->unicast_master_table->peer_name) {
 		return 0;
 	}
-	err = clock_gettime(CLOCK_MONOTONIC, &now);
+	err = PTP_GET_SYS_TIME_MONOTONIC( &now);
 	if (err) {
 		pr_err("clock_gettime failed: %m");
 		return err;
@@ -239,7 +239,7 @@ static int unicast_client_renew(struct PtpPort *p,
 	struct timespec now;
 	int err;
 
-	err = clock_gettime(CLOCK_MONOTONIC, &now);
+	err = PTP_GET_SYS_TIME_MONOTONIC( &now);
 	if (err) {
 		pr_err("clock_gettime failed: %m");
 		return err;
@@ -292,7 +292,7 @@ static void unicast_client_set_renewal(struct PtpPort *p,
 	struct timespec now;
 	long tmo;
 
-	if (clock_gettime(CLOCK_MONOTONIC, &now)) {
+	if (PTP_GET_SYS_TIME_MONOTONIC(&now)) {
 		pr_err("clock_gettime failed: %m");
 		return;
 	}
@@ -390,7 +390,7 @@ out:
 int unicast_client_claim_table(struct PtpPort *p)
 {
 	struct unicast_master_address *master, *peer;
-	struct config *cfg = clock_config(p->clock);
+	struct PtpConfig *cfg = clock_config(p->clock);
 	struct unicast_master_table *table;
 	int table_id;
 
@@ -413,14 +413,14 @@ int unicast_client_claim_table(struct PtpPort *p)
 		return -1;
 	}
 	peer = &table->peer_addr;
-	if (table->peer_name && str2addr(transport_type(p->trp),
+	if (table->peer_name && str2addr(TransportType(p->trp),
 					 table->peer_name, &peer->address))
 	{
 		pr_err(PORT_STR_FORMAT"bad peer address: %s", portnum(p), table->peer_name);
 		return -1;
 	}
 	STAILQ_FOREACH(master, &table->addrs, list) {
-		if (master->type != transport_type(p->trp)) {
+		if (master->type != TransportType(p->trp)) {
 			pr_warning(PORT_STR_FORMAT"unicast master transport mismatch", portnum(p));
 		}
 		if (p->delayMechanism == DM_P2P) {
@@ -557,7 +557,7 @@ int unicast_client_timer(struct PtpPort *p)
 	int err = 0;
 
 	STAILQ_FOREACH(master, &p->unicast_master_table->addrs, list) {
-		if (master->type != transport_type(p->trp)) {
+		if (master->type != TransportType(p->trp)) {
 			continue;
 		}
 		switch (master->state) {

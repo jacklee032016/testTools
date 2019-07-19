@@ -163,7 +163,8 @@ static void msg_tlv_recycle(struct ptp_message *msg)
 {
 	struct tlv_extra *extra;
 
-	while ((extra = TAILQ_FIRST(&msg->tlv_list)) != NULL) {
+	while ((extra = TAILQ_FIRST(&msg->tlv_list)) != NULL)
+	{
 		TAILQ_REMOVE(&msg->tlv_list, extra, list);
 		tlv_extra_recycle(extra);
 	}
@@ -346,45 +347,46 @@ int ptpMsgReceive(struct ptp_message *m, int cnt)
 
 	type = msg_type(m);
 
-	switch (type) {
-	case SYNC:
-		pdulen = sizeof(struct sync_msg);
-		break;
-	case DELAY_REQ:
-		pdulen = sizeof(struct delay_req_msg);
-		break;
-	case PDELAY_REQ:
-		pdulen = sizeof(struct pdelay_req_msg);
-		break;
-	case PDELAY_RESP:
-		pdulen = sizeof(struct pdelay_resp_msg);
-		break;
-	case FOLLOW_UP:
-		pdulen = sizeof(struct follow_up_msg);
-		break;
-	case DELAY_RESP:
-		pdulen = sizeof(struct delay_resp_msg);
-		break;
-	case PDELAY_RESP_FOLLOW_UP:
-		pdulen = sizeof(struct pdelay_resp_fup_msg);
-		break;
-	case ANNOUNCE:
-		pdulen = sizeof(struct announce_msg);
-		break;
-	case SIGNALING:
-		pdulen = sizeof(struct signaling_msg);
-		break;
-	case MANAGEMENT:
-		pdulen = sizeof(struct management_msg);
-		break;
-	default:
-		return -EBADMSG;
+	switch (type) 
+	{
+		case SYNC:
+			pdulen = sizeof(struct sync_msg);
+			break;
+		case DELAY_REQ:
+			pdulen = sizeof(struct delay_req_msg);
+			break;
+		case PDELAY_REQ:
+			pdulen = sizeof(struct pdelay_req_msg);
+			break;
+		case PDELAY_RESP:
+			pdulen = sizeof(struct pdelay_resp_msg);
+			break;
+		case FOLLOW_UP:
+			pdulen = sizeof(struct follow_up_msg);
+			break;
+		case DELAY_RESP:
+			pdulen = sizeof(struct delay_resp_msg);
+			break;
+		case PDELAY_RESP_FOLLOW_UP:
+			pdulen = sizeof(struct pdelay_resp_fup_msg);
+			break;
+		case ANNOUNCE:
+			pdulen = sizeof(struct announce_msg);
+			break;
+		case SIGNALING:
+			pdulen = sizeof(struct signaling_msg);
+			break;
+		case MANAGEMENT:
+			pdulen = sizeof(struct management_msg);
+			break;
+		default:
+			return -EBADMSG;
 	}
 
 	if (cnt < pdulen)
 		return -EBADMSG;
 
-	pr_info("Receiving MSG %s with length %d", ptpMsgTypeString(type), pdulen );
+	pr_info("Receiving MSG %s with length %d, total %d", ptpMsgTypeString(type), pdulen, cnt);
 	
 	switch (type)
 	{
@@ -411,7 +413,7 @@ int ptpMsgReceive(struct ptp_message *m, int cnt)
 			port_id_post_recv(&m->pdelay_resp_fup.requestingPortIdentity);
 			break;
 		case ANNOUNCE:
-			clock_gettime(CLOCK_MONOTONIC, &m->ts.host);
+			PTP_GET_SYS_TIME_MONOTONIC(&m->ts.host);
 			timestamp_post_recv(m, &m->announce.originTimestamp);
 			announce_post_recv(&m->announce);
 			break;
@@ -439,11 +441,12 @@ int msg_pre_send(struct ptp_message *m)
 
 	type = msg_type(m);
 
-	switch (type) {
+	switch (type)
+	{
 	case SYNC:
 		break;
 	case DELAY_REQ:
-		clock_gettime(CLOCK_MONOTONIC, &m->ts.host);
+		PTP_GET_SYS_TIME_MONOTONIC(&m->ts.host);
 		break;
 	case PDELAY_REQ:
 		break;
@@ -512,14 +515,17 @@ int msg_tlv_count(struct ptp_message *msg)
 void msg_put(struct ptp_message *m)
 {
 	m->refcnt--;
-	if (m->refcnt) {
+	if (m->refcnt)
+	{
 		return;
 	}
+
 	pool_stats.count++;
 	pool_debug("recycle", m);
 	msg_tlv_recycle(m);
 	TAILQ_INSERT_HEAD(&msg_pool, m, list);
 }
+
 
 int msg_sots_missing(struct ptp_message *m)
 {

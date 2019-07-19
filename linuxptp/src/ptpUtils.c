@@ -52,7 +52,7 @@ void print(int level, char const *format, ...)
 	if (level > print_level)
 		return;
 
-	clock_gettime(CLOCK_MONOTONIC, &ts);
+	PTP_GET_SYS_TIME_MONOTONIC(&ts);
 
 	va_start(ap, format);
 	vsnprintf(buf, sizeof(buf), format, ap);
@@ -82,14 +82,16 @@ void print(int level, char const *format, ...)
 
 #define HASH_TABLE_SIZE 200
 
-struct node {
-	char *key;
-	void *data;
-	struct node *next;
+struct HashNode
+{
+	char				*key;
+	void				*data;
+	struct HashNode	*next;
 };
 
-struct hash {
-	struct node *table[HASH_TABLE_SIZE];
+struct hash
+{
+	struct HashNode *table[HASH_TABLE_SIZE];
 };
 
 static unsigned int hash_function(const char* s)
@@ -111,14 +113,18 @@ struct hash *hash_create(void)
 void hash_destroy(struct hash *ht, void (*func)(void *))
 {
 	unsigned int i;
-	struct node *n, *next, **table = ht->table;
+	struct HashNode *n, *next, **table = ht->table;
 
-	for (i = 0; i < HASH_TABLE_SIZE; i++) {
-		for (n = table[i] ; n; n = next) {
+	for (i = 0; i < HASH_TABLE_SIZE; i++)
+	{
+		for (n = table[i] ; n; n = next)
+		{
 			next = n->next;
-			if (func) {
+			if (func)
+			{
 				func(n->data);
 			}
+			
 			free(n->key);
 			free(n);
 		}
@@ -130,40 +136,46 @@ void hash_destroy(struct hash *ht, void (*func)(void *))
 int hash_insert(struct hash *ht, const char* key, void *data)
 {
 	unsigned int h;
-	struct node *n, **table = ht->table;
+	struct HashNode *n, **table = ht->table;
 
 	h = hash_function(key);
 
-	for (n = table[h] ; n; n = n->next) {
-		if (!strcmp(n->key, key)) {
-			/* reject duplicate keys */
+	for (n = table[h] ; n; n = n->next)
+	{
+		if (!strcmp(n->key, key))
+		{/* reject duplicate keys */
 			return -1;
 		}
 	}
 	n = calloc(1, sizeof(*n));
-	if (!n) {
+	if (!n)
+	{
 		return -1;
 	}
 	n->key = strdup(key);
-	if (!n->key) {
+	if (!n->key)
+	{
 		free(n);
 		return -1;
 	}
 	n->data = data;
 	n->next = table[h];
 	table[h] = n;
+	
 	return 0;
 }
 
 void *hash_lookup(struct hash *ht, const char* key)
 {
 	unsigned int h;
-	struct node *n, **table = ht->table;
+	struct HashNode *n, **table = ht->table;
 
 	h = hash_function(key);
 
-	for (n = table[h] ; n; n = n->next) {
-		if (!strcmp(n->key, key)) {
+	for (n = table[h] ; n; n = n->next)
+	{
+		if (!strcmp(n->key, key))
+		{
 			return n->data;
 		}
 	}

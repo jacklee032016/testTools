@@ -222,11 +222,11 @@ struct management_msg
 {
 	struct ptp_header		hdr;
 	struct PortIdentity		targetPortIdentity;
-	UInteger8           startingBoundaryHops;
-	UInteger8           boundaryHops;
-	uint8_t             flags; /* reserved | actionField */
-	uint8_t             reserved;
-	uint8_t             suffix[0];
+	UInteger8			startingBoundaryHops;
+	UInteger8			boundaryHops;
+	uint8_t				flags; /* reserved | actionField */
+	uint8_t				reserved;
+	uint8_t				suffix[0];
 } PACKED;
 
 struct message_data
@@ -262,15 +262,17 @@ struct ClockDescription {
 	Octet manufacturerIdentity[OUI_LEN];
 };
 
-struct dataset {
-	UInteger8            priority1;
-	struct ClockIdentity identity;
-	struct ClockQuality  quality;
-	UInteger8            priority2;
-	UInteger8            localPriority; /* Telecom Profile only */
-	UInteger16           stepsRemoved;
-	struct PortIdentity  sender;
-	struct PortIdentity  receiver;
+struct dataset
+{
+	UInteger8				priority1;
+	struct ClockIdentity		identity;
+	struct ClockQuality		quality;
+	UInteger8				priority2;
+	UInteger8				localPriority; /* Telecom Profile only */
+	UInteger16				stepsRemoved;
+	
+	struct PortIdentity			sender;
+	struct PortIdentity			receiver;
 };
 
 struct currentDS {
@@ -648,7 +650,6 @@ enum transport_event {
 	TRANS_P2P1STEP,
 	TRANS_DEFER_EVENT,
 };
-
 
 
 #include <stdint.h>

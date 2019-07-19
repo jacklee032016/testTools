@@ -27,21 +27,24 @@
 #include "ptpConfig.h"
 #include "util.h"
 
-enum config_section {
+enum config_section
+{
 	GLOBAL_SECTION,
 	UC_MTAB_SECTION,
 	PORT_SECTION,
 	UNKNOWN_SECTION,
 };
 
-enum config_type {
+enum config_type
+{
 	CFG_TYPE_INT,
 	CFG_TYPE_DOUBLE,
 	CFG_TYPE_ENUM,
 	CFG_TYPE_STRING,
 };
 
-struct config_enum {
+struct config_enum
+{
 	const char *label;
 	int value;
 };
@@ -59,14 +62,16 @@ typedef union {
 #define CFG_ITEM_PORT   (1 << 2) /* item may appear in port sections */
 #define CFG_ITEM_DYNSTR (1 << 4) /* string value dynamically allocated */
 
-struct config_item {
-	char label[CONFIG_LABEL_SIZE];
-	enum config_type type;
-	struct config_enum *tab;
-	unsigned int flags;
-	any_t val;
-	any_t min;
-	any_t max;
+struct config_item
+{
+	char					label[CONFIG_LABEL_SIZE];
+	enum config_type		type;
+	struct config_enum	*tab;
+	
+	unsigned int			flags;
+	any_t				val;
+	any_t				min;
+	any_t				max;
 };
 
 #define N_CONFIG_ITEMS (sizeof(config_tab) / sizeof(config_tab[0]))
@@ -125,7 +130,8 @@ struct config_item {
 #define PORT_ITEM_STR(label, _default) \
 	CONFIG_ITEM_STRING(label, 1, _default)
 
-static struct config_enum clock_servo_enu[] = {
+static struct config_enum clock_servo_enu[] =
+{
 	{ "pi",     CLOCK_SERVO_PI     },
 	{ "linreg", CLOCK_SERVO_LINREG },
 	{ "ntpshm", CLOCK_SERVO_NTPSHM },
@@ -133,7 +139,8 @@ static struct config_enum clock_servo_enu[] = {
 	{ NULL, 0 },
 };
 
-static struct config_enum clock_type_enu[] = {
+static struct config_enum clock_type_enu[] =
+{
 	{ "OC",      CLOCK_TYPE_ORDINARY },
 	{ "BC",      CLOCK_TYPE_BOUNDARY },
 	{ "P2P_TC",  CLOCK_TYPE_P2P      },
@@ -141,7 +148,8 @@ static struct config_enum clock_type_enu[] = {
 	{ NULL, 0 },
 };
 
-static struct config_enum dataset_comp_enu[] = {
+static struct config_enum dataset_comp_enu[] =
+{
 	{ "ieee1588", DS_CMP_IEEE1588 },
 	{ "G.8275.x", DS_CMP_G8275    },
 	{ NULL, 0 },
@@ -160,14 +168,16 @@ static struct config_enum delay_mech_enu[] = {
 	{ NULL, 0 },
 };
 
-static struct config_enum nw_trans_enu[] = {
+static struct config_enum nw_trans_enu[] =
+{
 	{ "L2",    TRANS_IEEE_802_3 },
 	{ "UDPv4", TRANS_UDP_IPV4   },
 	{ "UDPv6", TRANS_UDP_IPV6   },
 	{ NULL, 0 },
 };
 
-static struct config_enum timestamping_enu[] = {
+static struct config_enum timestamping_enu[] =
+{
 	{ "hardware", TS_HARDWARE  },
 	{ "software", TS_SOFTWARE  },
 	{ "legacy",   TS_LEGACY_HW },
@@ -176,7 +186,8 @@ static struct config_enum timestamping_enu[] = {
 	{ NULL, 0 },
 };
 
-static struct config_enum tsproc_enu[] = {
+static struct config_enum tsproc_enu[] =
+{
 	{ "filter",        TSPROC_FILTER        },
 	{ "raw",           TSPROC_RAW           },
 	{ "filter_weight", TSPROC_FILTER_WEIGHT },
@@ -261,7 +272,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
 	PORT_ITEM_INT("udp6_scope", 0x0E, 0x00, 0x0F),
-	GLOB_ITEM_STR("uds_address", "/var/run/ptp4l"),
+	GLOB_ITEM_STR("uds_address", PTP_RUN_HOME"/ptp4l"),
 	PORT_ITEM_INT("unicast_listen", 0, 0, 1),
 	PORT_ITEM_INT("unicast_master_table", 0, 0, INT_MAX),
 	PORT_ITEM_INT("unicast_req_duration", 3600, 10, INT_MAX),
@@ -273,11 +284,9 @@ struct config_item config_tab[] = {
 
 static struct unicast_master_table *current_uc_mtab;
 
-static enum parser_result
-parse_fault_interval(struct config *cfg, const char *section,
-		     const char *option, const char *value);
+static enum parser_result parse_fault_interval(struct PtpConfig *cfg, const char *section, const char *option, const char *value);
 
-static struct config_item *config_section_item(struct config *cfg,
+static struct config_item *config_section_item(struct PtpConfig *cfg,
 					       const char *section,
 					       const char *name)
 {
@@ -287,13 +296,12 @@ static struct config_item *config_section_item(struct config *cfg,
 	return hash_lookup(cfg->htab, buf);
 }
 
-static struct config_item *config_global_item(struct config *cfg,
-					      const char *name)
+static struct config_item *config_global_item(struct PtpConfig *cfg, const char *name)
 {
 	return config_section_item(cfg, "global", name);
 }
 
-static struct config_item *config_find_item(struct config *cfg,
+static struct config_item *config_find_item(struct PtpConfig *cfg,
 					    const char *section,
 					    const char *name)
 {
@@ -307,7 +315,7 @@ static struct config_item *config_find_item(struct config *cfg,
 	return config_global_item(cfg, name);
 }
 
-static struct config_item *config_item_alloc(struct config *cfg,
+static struct config_item *config_item_alloc(struct PtpConfig *cfg,
 					     const char *section,
 					     const char *name,
 					     enum config_type type)
@@ -343,7 +351,7 @@ static void config_item_free(void *ptr)
 	free(ci);
 }
 
-static int config_switch_unicast_mtab(struct config *cfg, int idx, int line_num)
+static int config_switch_unicast_mtab(struct PtpConfig *cfg, int idx, int line_num)
 {
 	struct unicast_master_table *table;
 
@@ -437,24 +445,31 @@ static enum parser_result parse_section_line(char *s, enum config_section *secti
 {
 	if (!strcasecmp(s, "[global]")) {
 		*section = GLOBAL_SECTION;
-	} else if (!strcasecmp(s, "[unicast_master_table]")) {
+	}
+	else if (!strcasecmp(s, "[unicast_master_table]"))
+	{
 		*section = UC_MTAB_SECTION;
 		current_uc_mtab = NULL;
-	} else if (s[0] == '[') {
+	}
+	else if (s[0] == '[')
+	{
 		char c;
 		*section = PORT_SECTION;
+
 		/* Replace square brackets with white space. */
-		while (0 != (c = *s)) {
+		while (0 != (c = *s))
+		{
 			if (c == '[' || c == ']')
 				*s = ' ';
 			s++;
 		}
-	} else
+	}
+	else
 		return NOT_PARSED;
 	return PARSED_OK;
 }
 
-static enum parser_result parse_item(struct config *cfg,
+static enum parser_result parse_item(struct PtpConfig *cfg,
 				     int commandline,
 				     const char *section,
 				     const char *option,
@@ -549,7 +564,7 @@ static enum parser_result parse_item(struct config *cfg,
 	return PARSED_OK;
 }
 
-static enum parser_result parse_fault_interval(struct config *cfg,
+static enum parser_result parse_fault_interval(struct PtpConfig *cfg,
 					       const char *section,
 					       const char *option,
 					       const char *value)
@@ -580,7 +595,7 @@ static enum parser_result parse_fault_interval(struct config *cfg,
 	return NOT_PARSED;
 }
 
-static int parse_unicast_mtab_line(struct config *cfg, char *line, int line_num)
+static int parse_unicast_mtab_line(struct PtpConfig *cfg, char *line, int line_num)
 {
 	char address[64 + 1] = {0}, transport[16 + 1] = {0};
 	enum transport_type type = TRANS_UDS;
@@ -673,7 +688,7 @@ static struct option *config_alloc_longopts(void)
 	return opts;
 }
 
-int config_read(char *name, struct config *cfg)
+int config_read(char *name, struct PtpConfig *cfg)
 {
 	enum config_section current_section = UNKNOWN_SECTION;
 	enum parser_result parser_res;
@@ -684,8 +699,8 @@ int config_read(char *name, struct config *cfg)
 	int line_num;
 
 	fp = 0 == strncmp(name, "-", 2) ? stdin : fopen(name, "r");
-
-	if (!fp) {
+	if (!fp)
+	{
 		fprintf(stderr, "failed to open configuration file %s: %m\n", name);
 		return -1;
 	}
@@ -712,8 +727,7 @@ int config_read(char *name, struct config *cfg)
 			if (current_section == PORT_SECTION) {
 				char port[17];
 				if (1 != sscanf(line, " %16s", port)) {
-					fprintf(stderr, "could not parse port name on line %d\n",
-							line_num);
+					fprintf(stderr, "could not parse port name on line %d\n", line_num);
 					goto parse_error;
 				}
 				current_port = config_create_interface(port, cfg);
@@ -780,7 +794,7 @@ parse_error:
 	return -2;
 }
 
-struct PtpInterface *config_create_interface(char *name, struct config *cfg)
+struct PtpInterface *config_create_interface(char *name, struct PtpConfig *cfg)
 {
 	struct PtpInterface *iface;
 
@@ -803,11 +817,12 @@ struct PtpInterface *config_create_interface(char *name, struct config *cfg)
 	return iface;
 }
 
-struct config *config_create(void)
+/* all global default items are from config_tab */
+struct PtpConfig *config_create(void)
 {
 	char buf[CONFIG_LABEL_SIZE + 8];
 	struct config_item *ci;
-	struct config *cfg;
+	struct PtpConfig *cfg;
 	int i;
 
 	cfg = calloc(1, sizeof(*cfg));
@@ -831,27 +846,32 @@ struct config *config_create(void)
 	}
 
 	/* Populate the hash table with global defaults. */
-	for (i = 0; i < N_CONFIG_ITEMS; i++) {
+	for (i = 0; i < N_CONFIG_ITEMS; i++)
+	{
 		ci = &config_tab[i];
 		ci->flags |= CFG_ITEM_STATIC;
 		snprintf(buf, sizeof(buf), "global.%s", ci->label);
-		if (hash_insert(cfg->htab, buf, ci)) {
+		
+		if (hash_insert(cfg->htab, buf, ci))
+		{
 			fprintf(stderr, "duplicate item %s\n", ci->label);
 			goto fail;
 		}
 	}
 
 	/* Perform a Built In Self Test.*/
-	for (i = 0; i < N_CONFIG_ITEMS; i++) {
+	for (i = 0; i < N_CONFIG_ITEMS; i++)
+	{
 		ci = &config_tab[i];
 		ci = config_global_item(cfg, ci->label);
-		if (ci != &config_tab[i]) {
-			fprintf(stderr, "config BIST failed at %s\n",
-				config_tab[i].label);
+		if (ci != &config_tab[i])
+		{
+			fprintf(stderr, "config BIST failed at %s\n", config_tab[i].label);
 			goto fail;
 		}
 	}
 	return cfg;
+	
 fail:
 	hash_destroy(cfg->htab, NULL);
 	free(cfg->opts);
@@ -859,7 +879,7 @@ fail:
 	return NULL;
 }
 
-void config_destroy(struct config *cfg)
+void config_destroy(struct PtpConfig *cfg)
 {
 	struct unicast_master_address *address;
 	struct unicast_master_table *table;
@@ -885,7 +905,7 @@ void config_destroy(struct config *cfg)
 	free(cfg);
 }
 
-double config_get_double(struct config *cfg, const char *section,
+double config_get_double(struct PtpConfig *cfg, const char *section,
 			 const char *option)
 {
 	struct config_item *ci = config_find_item(cfg, section, option);
@@ -898,7 +918,7 @@ double config_get_double(struct config *cfg, const char *section,
 	return ci->val.d;
 }
 
-int config_get_int(struct config *cfg, const char *section, const char *option)
+int config_get_int(struct PtpConfig *cfg, const char *section, const char *option)
 {
 	struct config_item *ci = config_find_item(cfg, section, option);
 
@@ -906,21 +926,22 @@ int config_get_int(struct config *cfg, const char *section, const char *option)
 		pr_err("bug: config option %s missing!", option);
 		exit(-1);
 	}
-	switch (ci->type) {
-	case CFG_TYPE_DOUBLE:
-	case CFG_TYPE_STRING:
-		pr_err("bug: config option %s type mismatch!", option);
-		exit(-1);
-	case CFG_TYPE_INT:
-	case CFG_TYPE_ENUM:
-		break;
+	switch (ci->type)
+	{
+		case CFG_TYPE_DOUBLE:
+		case CFG_TYPE_STRING:
+			pr_err("bug: config option %s type mismatch!", option);
+			exit(-1);
+		case CFG_TYPE_INT:
+		case CFG_TYPE_ENUM:
+			break;
 	}
 	pr_debug("config item %s.%s is %d", section, option, ci->val.i);
 	return ci->val.i;
 }
 
-char *config_get_string(struct config *cfg, const char *section,
-			const char *option)
+
+char *config_get_string(struct PtpConfig *cfg, const char *section, const char *option)
 {
 	struct config_item *ci = config_find_item(cfg, section, option);
 
@@ -932,7 +953,7 @@ char *config_get_string(struct config *cfg, const char *section,
 	return ci->val.s;
 }
 
-int config_harmonize_onestep(struct config *cfg)
+int config_harmonize_onestep(struct PtpConfig *cfg)
 {
 	enum timestamp_type tstype = config_get_int(cfg, NULL, "time_stamping");
 	int two_step_flag = config_get_int(cfg, NULL, "twoStepFlag");
@@ -970,7 +991,7 @@ int config_harmonize_onestep(struct config *cfg)
 	return 0;
 }
 
-int config_parse_option(struct config *cfg, const char *opt, const char *val)
+int config_parse_option(struct PtpConfig *cfg, const char *opt, const char *val)
 {
 	enum parser_result result;
 
@@ -997,7 +1018,8 @@ int config_parse_option(struct config *cfg, const char *opt, const char *val)
 	return -1;
 }
 
-int config_set_double(struct config *cfg, const char *option, double val)
+/* followings are for setting options from command line, so it is not change */
+int config_set_double(struct PtpConfig *cfg, const char *option, double val)
 {
 	struct config_item *ci = config_find_item(cfg, NULL, option);
 
@@ -1011,26 +1033,30 @@ int config_set_double(struct config *cfg, const char *option, double val)
 	return 0;
 }
 
-int config_set_section_int(struct config *cfg, const char *section,
-			   const char *option, int val)
+int config_set_section_int(struct PtpConfig *cfg, const char *section, const char *option, int val)
 {
 	struct config_item *cgi, *dst;
 
 	cgi = config_find_item(cfg, NULL, option);
-	if (!cgi) {
+	if (!cgi)
+	{
 		pr_err("bug: config option %s missing!", option);
 		return -1;
 	}
-	switch (cgi->type) {
-	case CFG_TYPE_DOUBLE:
-	case CFG_TYPE_STRING:
-		pr_err("bug: config option %s type mismatch!", option);
-		return -1;
-	case CFG_TYPE_INT:
-	case CFG_TYPE_ENUM:
-		break;
+	
+	switch (cgi->type)
+	{
+		case CFG_TYPE_DOUBLE:
+		case CFG_TYPE_STRING:
+			pr_err("bug: config option %s type mismatch!", option);
+			return -1;
+		case CFG_TYPE_INT:
+		case CFG_TYPE_ENUM:
+			break;
 	}
-	if (!section) {
+	
+	if (!section)
+	{
 		cgi->flags |= CFG_ITEM_LOCKED;
 		cgi->val.i = val;
 		pr_debug("locked item global.%s as %d", option, cgi->val.i);
@@ -1049,8 +1075,7 @@ int config_set_section_int(struct config *cfg, const char *section,
 	return 0;
 }
 
-int config_set_string(struct config *cfg, const char *option,
-		      const char *val)
+int config_set_string(struct PtpConfig *cfg, const char *option, const char *val)
 {
 	struct config_item *ci = config_find_item(cfg, NULL, option);
 
@@ -1071,3 +1096,4 @@ int config_set_string(struct config *cfg, const char *option,
 	pr_debug("locked item global.%s as '%s'", option, ci->val.s);
 	return 0;
 }
+
