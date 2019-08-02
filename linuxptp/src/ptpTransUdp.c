@@ -36,11 +36,6 @@
 #include "sk.h"
 #include "transportPrivate.h"
 
-#define EVENT_PORT        319
-#define GENERAL_PORT      320
-
-#define PTP_PRIMARY_MCAST_IPADDR		"224.0.1.129"
-#define PTP_PDELAY_MCAST_IPADDR		"224.0.0.107"
 
 struct PtpUdp
 {
@@ -92,7 +87,7 @@ static int _udpClose(struct transport *t, struct FdArray *fda)
 }
 
 /* UDP socket of port/device, then join 2 multicast addresses */
-static int _udpOpenSocket(const char *name, struct in_addr mc_addr[2], short port, int ttl)
+static int _udpOpenSocket(const char *devName, struct in_addr mc_addr[2], short port, int ttl)
 {
 	struct sockaddr_in addr;
 	int fd, index, on = 1;
@@ -108,7 +103,7 @@ static int _udpOpenSocket(const char *name, struct in_addr mc_addr[2], short por
 		pr_err("socket failed: %m");
 		goto no_socket;
 	}
-	index = sk_interface_index(fd, name);
+	index = sk_interface_index(fd, devName);
 	if (index < 0)
 		goto no_option;
 
@@ -124,9 +119,9 @@ static int _udpOpenSocket(const char *name, struct in_addr mc_addr[2], short por
 		goto no_option;
 	}
 	
-	if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, name, strlen(name)))
+	if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, devName, strlen(devName)))
 	{
-		pr_err("setsockopt SO_BINDTODEVICE to device %s failed: %m", name);
+		pr_err("setsockopt SO_BINDTODEVICE to device %s failed: %m", devName);
 		goto no_option;
 	}
 
@@ -165,8 +160,7 @@ enum { MC_PRIMARY, MC_PDELAY };
 
 static struct in_addr mcast_addr[2];
 
-static int _udpOpen(struct transport *t, struct PtpInterface *iface,
-		    struct FdArray *fda, enum timestamp_type ts_type)
+static int _udpOpen(struct transport *t, struct PtpInterface *iface, struct FdArray *fda, enum timestamp_type ts_type)
 {
 	struct PtpUdp *udp = container_of(t, struct PtpUdp, t);
 	uint8_t event_dscp, general_dscp;
@@ -186,11 +180,11 @@ static int _udpOpen(struct transport *t, struct PtpInterface *iface,
 	if (!inet_aton(PTP_PDELAY_MCAST_IPADDR, &mcast_addr[MC_PDELAY]))
 		return -1;
 
-	efd = _udpOpenSocket(name, mcast_addr, EVENT_PORT, ttl);
+	efd = _udpOpenSocket(name, mcast_addr, PTP_PORT_EVENT, ttl);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = _udpOpenSocket(name, mcast_addr, GENERAL_PORT, ttl);
+	gfd = _udpOpenSocket(name, mcast_addr, PTP_PORT_GENERAL, ttl);
 	if (gfd < 0)
 		goto no_general;
 
@@ -261,7 +255,7 @@ static int _udpSend(struct transport *t, struct FdArray *fda,
 		addr = &addr_buf;
 	}
 
-	addr->sin.sin_port = htons(event ? EVENT_PORT : GENERAL_PORT);
+	addr->sin.sin_port = htons(event ? PTP_PORT_EVENT : PTP_PORT_GENERAL);
 
 	/*
 	 * Extend the payload by two, for UDP checksum correction.

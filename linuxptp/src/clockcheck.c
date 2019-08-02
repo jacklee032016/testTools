@@ -25,7 +25,8 @@
 #define CHECK_MIN_INTERVAL 100000000
 #define CHECK_MAX_FREQ 900000000
 
-struct clockcheck {
+struct clockcheck
+{
 	/* Sanity frequency limit */
 	int freq_limit;
 	/* Frequency was set at least once */
@@ -34,7 +35,8 @@ struct clockcheck {
 	int current_freq;
 	/* Maximum and minimum frequency since last update */
 	int max_freq;
-	int min_freq;
+	int	min_freq;
+	
 	uint64_t last_ts;
 	uint64_t last_mono_ts;
 };
@@ -45,12 +47,14 @@ struct clockcheck *clockcheck_create(int freq_limit)
 	cc = calloc(1, sizeof(*cc));
 	if (!cc)
 		return NULL;
+	
 	cc->freq_limit = freq_limit;
 	cc->max_freq = -CHECK_MAX_FREQ;
 	cc->min_freq = CHECK_MAX_FREQ;
 	return cc;
 }
 
+/* return Zero if ts passed the check, non-zero otherwise. */
 int clockcheck_sample(struct clockcheck *cc, uint64_t ts)
 {
 	uint64_t mono_ts;
@@ -111,6 +115,7 @@ void clockcheck_set_freq(struct clockcheck *cc, int freq)
 		cc->max_freq = freq;
 	if (cc->min_freq > freq)
 		cc->min_freq = freq;
+	
 	cc->current_freq = freq;
 	cc->freq_known = 1;
 }
@@ -125,3 +130,4 @@ void clockcheck_destroy(struct clockcheck *cc)
 {
 	free(cc);
 }
+

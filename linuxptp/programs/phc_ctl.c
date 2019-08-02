@@ -167,7 +167,8 @@ static int do_set(clockid_t clkid, int cmdc, char *cmdv[])
 		 * that we don't eat any arguments
 		 */
 		args_to_eat = 0;
-	} else {
+	}
+	else {
 		/* parse the double */
 		r = get_ranged_double(cmdv[0], &time_arg, 0.0, DBL_MAX);
 		switch (r) {
@@ -210,6 +211,7 @@ static int do_get(clockid_t clkid, int cmdc, char *cmdv[])
 	struct timespec ts;
 
 	memset(&ts, 0, sizeof(ts));
+	
 	if (PTP_GET_SYS_TIME_NOW(clkid, &ts))
 	{
 		pr_err("get: failed to get clock time: %s", strerror(errno));
@@ -281,18 +283,19 @@ static int do_freq(clockid_t clkid, int cmdc, char *cmdv[])
 
 	/* parse the double ppb argument */
 	r = get_ranged_double(cmdv[0], &ppb, -NSEC2SEC, NSEC2SEC);
-	switch (r) {
-	case PARSED_OK:
-		break;
-	case MALFORMED:
-		pr_err("freq: '%s' is not a valid double", cmdv[0]);
-		return -2;
-	case OUT_OF_RANGE:
-		pr_err("freq: '%s' is out of range.", cmdv[0]);
-		return -2;
-	default:
-		pr_err("freq: couldn't process '%s'", cmdv[0]);
-		return -2;
+	switch (r)
+	{
+		case PARSED_OK:
+			break;
+		case MALFORMED:
+			pr_err("freq: '%s' is not a valid double", cmdv[0]);
+			return -2;
+		case OUT_OF_RANGE:
+			pr_err("freq: '%s' is out of range.", cmdv[0]);
+			return -2;
+		default:
+			pr_err("freq: couldn't process '%s'", cmdv[0]);
+			return -2;
 	}
 
 	clockadj_set_freq(clkid, ppb);
@@ -379,18 +382,19 @@ static int do_wait(clockid_t clkid, int cmdc, char *cmdv[])
 
 	/* parse the double time offset argument */
 	r = get_ranged_double(cmdv[0], &time_arg, 0.0, DBL_MAX);
-	switch (r) {
-	case PARSED_OK:
-		break;
-	case MALFORMED:
-		pr_err("wait: '%s' is not a valid double", cmdv[0]);
-		return -2;
-	case OUT_OF_RANGE:
-		pr_err("wait: '%s' is out of range.", cmdv[0]);
-		return -2;
-	default:
-		pr_err("wait: couldn't process '%s'", cmdv[0]);
-		return -2;
+	switch (r)
+	{
+		case PARSED_OK:
+			break;
+		case MALFORMED:
+			pr_err("wait: '%s' is not a valid double", cmdv[0]);
+			return -2;
+		case OUT_OF_RANGE:
+			pr_err("wait: '%s' is out of range.", cmdv[0]);
+			return -2;
+		default:
+			pr_err("wait: couldn't process '%s'", cmdv[0]);
+			return -2;
 	}
 
 	double_to_timespec(time_arg, &ts);

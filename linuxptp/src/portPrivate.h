@@ -49,11 +49,13 @@ struct nrate_estimator {
 	int ratio_valid;
 };
 
-struct tc_txd {
-	TAILQ_ENTRY(tc_txd) list;
-	struct ptp_message *msg;
-	tmv_t residence;
-	int ingress_port;
+struct tc_txd
+{
+	TAILQ_ENTRY(tc_txd)		list;
+	struct ptp_message		*msg;
+	
+	tmv_t					residence;
+	int						ingress_port;
 };
 
 struct PtpPort
@@ -67,12 +69,12 @@ struct PtpPort
 	enum timestamp_type		timestamping;
 	struct FdArray			fda;
 
-	int						fault_fd;		/* fd of CLOCK_MONOLITHIC */
-	int						phc_index;	/* index of /dev/ptp */
+	int						fault_fd;		/* fd of CLOCK_MONOLITHIC, index is N_POLLFD*/
+	int						phc_index;	/* index of /dev/ptp; when readtime clock is used, it is -1 */
 
-	void (*dispatch)(struct PtpPort *p, enum PORT_EVENT event, int mdiff);
+	void					(*cbDispatch)(struct PtpPort *p, enum PORT_EVENT event, int mdiff);
 	/* get event from fd polled */
-	enum PORT_EVENT (*event)(struct PtpPort *p, int fd_index);
+	enum PORT_EVENT	(*cbEvent)(struct PtpPort *p, int fd_index);
 
 	int							jbod;
 	struct foreign_clock			*best;
@@ -158,7 +160,8 @@ struct PtpPort
 
 };
 
-#define portnum(p) (p->portIdentity.portNumber)
+#define	PORT_NUMBER(p)				(p->portIdentity.portNumber)
+#define	PORT_NAME(p)				(p->name)
 
 void e2e_dispatch(struct PtpPort *p, enum PORT_EVENT event, int mdiff);
 enum PORT_EVENT e2e_event(struct PtpPort *p, int fd_index);
@@ -199,184 +202,39 @@ void portMsgProSync(struct PtpPort *p, struct ptp_message *m);
 void ts_add(tmv_t *ts, Integer64 correction);
 
 
-#if 0
 
-int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2);
-int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2)
-{
-	return pid_eq(&m1->header.sourcePortIdentity, &m2->header.sourcePortIdentity);
-}
+#define source_pid_eq(m1, m2)	\
+		(pid_eq(&(m1)->header.sourcePortIdentity, &(m2)->header.sourcePortIdentity))
 
-/**
- * Returns a port's last fault type.
- *
- * @param port  A port instance.
- * @return      One of the @ref fault_type values.
- */
-enum fault_type last_fault_type(struct PtpPort *port);
-enum fault_type last_fault_type(struct PtpPort *port)
-{
-	return port->last_fault_type;
-}
+#define	PORT_LAST_FAULT_TYPE(port)	\
+		((port)->last_fault_type)
 
-/**
- * Return file descriptor of the port.
- * @param port	A port instance.
- * @return	File descriptor or -1 if not applicable.
- */
-int port_fault_fd(struct PtpPort *port);
-int port_fault_fd(struct PtpPort *port)
-{
-	return port->fault_fd;
-}
 
-/**
- * Return array of file descriptors for this port. The fault fd is not
- * included.
- * @param port	A port instance
- * @return	Array of file descriptors. Unused descriptors are guranteed
- *		to be set to -1.
- */
-struct FdArray *port_fda(struct PtpPort *port);
-struct FdArray *port_fda(struct PtpPort *port)
-{
-	return &port->fda;
-}
+#define	PORT_IDENTITY(port)	\
+		((port)->portIdentity)
 
-static int port_is_ieee8021as(struct PtpPort *p)
-{
-	return p->follow_up_info ? 1 : 0;
-}
+#define	 PORT_STATE(port) \
+		((port)->state)
+
+#define	PORT_IS_IEEE8021_AS(port)	\
+		((port)->follow_up_info ? 1 : 0)
 
 /**
  * Returns the dataset from a port's best foreign clock record, if any
  * has yet been discovered. This function does not bring the returned
  * dataset up to date, so the caller should invoke port_compute_best()
  * beforehand.
- *
- * @param port  A pointer previously obtained via port_open().
- * @return      A pointer to a dataset, or NULL.
  */
-struct dataset *port_best_foreign(struct PtpPort *port);
-struct dataset *port_best_foreign(struct PtpPort *port)
-{
-	return port->best ? &port->best->dataset : NULL;
-}
-
-/**
- * Obtain a port's identity.
- * @param p        A pointer previously obtained via port_open().
- * @return         The port identity of 'p'.
- */
-struct PortIdentity port_identity(struct PtpPort *p);
-struct PortIdentity port_identity(struct PtpPort *p)
-{
-	return p->portIdentity;
-}
-
-/**
- * Obtain a port number.
- * @param p        A port instance.
- * @return         The port number of 'p'.
- */
-int port_number(struct PtpPort *p);
-int port_number(struct PtpPort *p)
-{
-	return portnum(p);
-}
-
-
-
-/**
- * Obtain the link status of a port.
- * @param p        A port instance.
- * @return         One (1) if the link is up, zero otherwise.
- */
-int port_link_status_get(struct PtpPort *p);
-int port_link_status_get(struct PtpPort *p)
-{
-	return !!(p->link_status & LINK_UP);
-}
-
-/**
- * Returns a port's current state.
- * @param port  A port instance.
- * @return      One of the @ref PORT_STATE values.
- */
-enum PORT_STATE portState(struct PtpPort *port);
-enum PORT_STATE portState(struct PtpPort *port)
-{
-	return port->state;
-}
-
-/**
- * Generates state machine events based on activity on a port's file
- * descriptors.
- *
- * @param port A pointer previously obtained via port_open().
- * @param fd_index The index of the active file descriptor.
- * @return One of the @a PORT_EVENT codes.
- */
-enum PORT_EVENT port_event(struct PtpPort *port, int fd_index);
-enum PORT_EVENT port_event(struct PtpPort *p, int fd_index)
-{
-	return p->event(p, fd_index);
-}
-
-/**
- * Dispatch a port event. This may cause a state transition on the
- * port, with the associated side effect.
- *
- * @param port A pointer previously obtained via port_open().
- * @param event One of the @a PORT_EVENT codes.
- * @param mdiff Whether a new master has been selected.
- */
-void port_dispatch(struct PtpPort *p, enum PORT_EVENT event, int mdiff);
-void port_dispatch(struct PtpPort *p, enum PORT_EVENT event, int mdiff)
-{
-	p->dispatch(p, event, mdiff);
-}
-
-#else
-
-#define source_pid_eq(m1, m2)	\
-		(pid_eq(&(m1)->header.sourcePortIdentity, &(m2)->header.sourcePortIdentity))
-
-#define	last_fault_type(port)	\
-		((port)->last_fault_type)
-
-#define	port_fault_fd(port)	\
-		((port)->fault_fd)
-
-#define 	port_fda(port)	\
-		(&(port)->fda)
-
-#define	port_is_ieee8021as(port)	\
-		((port)->follow_up_info ? 1 : 0)
-
-#define	port_best_foreign(port)	\
+#define	PORT_BEST_FOREIGN_DS(port)	\
 		((port)->best ? &(port)->best->dataset : NULL)
 
-#define	port_identity(port)	\
-		((port)->portIdentity)
 
-#define	port_number(port)	\
-		(portnum((port)))
-
-#define	port_link_status_get(port)	\
+#define	PORT_LINK_STATUS(port)	\
 		(!!((port)->link_status & LINK_UP))
 
 
-#define	port_dispatch(port, event, mdiff) \
-	(port)->dispatch((port), (event), (mdiff))
-
-#define	port_event(port, fd_index) \
-	(port)->event((port), (fd_index))
-
-#define	 portState(port) \
-		((port)->state)
+#define	 PORT_DISPATCH(port, event, masterDiff) \
+		((port)->cbDispatch( (port), (event), (masterDiff)))
 
 #endif
 
-
-#endif

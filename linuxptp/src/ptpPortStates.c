@@ -16,13 +16,13 @@ static void _portStateDebug(struct PtpPort *p, enum PORT_STATE next, enum PORT_E
 {
 	if (event == EV_FAULT_DETECTED)
 	{
-		pr_notice(PORT_STR_FORMAT"State from %s to %s on event %s (%s)", portnum(p),
+		pr_notice(PORT_STR_FORMAT"State from %s to %s on event %s (%s)", PORT_NAME(p),
 			  ptpPortStateString(p->state), ptpPortStateString(next), ptpPortEventString(event),
-			  ft_str(last_fault_type(p)));
+			  ft_str(PORT_LAST_FAULT_TYPE(p)));
 	}
 	else
 	{
-		pr_notice(PORT_STR_FORMAT"State from %s to %s on event %s", portnum(p),
+		pr_notice(PORT_STR_FORMAT"State from %s to %s on event %s", PORT_NAME(p),
 			  ptpPortStateString(p->state), ptpPortStateString(next), ptpPortEventString(event) );
 	}
 }
@@ -84,7 +84,7 @@ void portOpDisable(struct PtpPort *p)
 }
 
 
-/* called in dispatch handler */
+/* called in dispatch handler, for boundary and transparent clock */
 int portStateUpdate(struct PtpPort *p, enum PORT_EVENT event, int mdiff)
 {
 	enum PORT_STATE next = p->state_machine(p->state, event, mdiff);
@@ -92,11 +92,11 @@ int portStateUpdate(struct PtpPort *p, enum PORT_EVENT event, int mdiff)
 	if (PS_FAULTY == next)
 	{
 		struct fault_interval i;
-		fault_interval(p, last_fault_type(p), &i);
+		fault_interval(p, PORT_LAST_FAULT_TYPE(p), &i);
 		
 		if (clear_fault_asap(&i))
 		{
-			pr_notice(PORT_STR_FORMAT"clearing fault immediately", portnum(p));
+			pr_notice(PORT_STR_FORMAT"clearing fault immediately", PORT_NAME(p));
 			next = p->state_machine(next, EV_FAULT_CLEARED, 0);
 		}
 	}

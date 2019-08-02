@@ -24,6 +24,7 @@
 
 static int phc_get_caps(clockid_t clkid, struct ptp_clock_caps *caps);
 
+/* open phc device, such as /dev/ptp1 */
 clockid_t phc_open(char *phc)
 {
 	clockid_t clkid;
@@ -35,7 +36,8 @@ clockid_t phc_open(char *phc)
 
 	clkid = FD_TO_CLOCKID(fd);
 	/* check if clkid is valid */
-	if (phc_get_caps(clkid, &caps)) {
+	if (phc_get_caps(clkid, &caps))
+	{
 		close(fd);
 		return CLOCK_INVALID;
 	}
@@ -138,15 +140,18 @@ static int64_t sysoff_estimate(struct ptp_clock_time *pct, int n_samples,
 	return samples[0].offset;
 }
 
-int sysoff_measure(int fd, int n_samples,
-		   int64_t *result, uint64_t *ts, int64_t *delay)
+
+int sysoff_measure(int fd, int n_samples, int64_t *result, uint64_t *ts, int64_t *delay)
 {
 	struct ptp_sys_offset pso;
 	pso.n_samples = n_samples;
-	if (ioctl(fd, PTP_SYS_OFFSET, &pso)) {
+	
+	if (ioctl(fd, PTP_SYS_OFFSET, &pso))
+	{
 		perror("ioctl PTP_SYS_OFFSET");
 		return SYSOFF_RUN_TIME_MISSING;
 	}
+	
 	*result = sysoff_estimate(pso.ts, n_samples, ts, delay);
 	return SYSOFF_SUPPORTED;
 }

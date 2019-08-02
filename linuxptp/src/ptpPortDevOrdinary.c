@@ -14,6 +14,7 @@ static int __setSyncTxTmo(struct PtpPort *p)
 	return set_tmo_log(p->fda.fd[FD_SYNC_TX_TIMER], 1, p->logSyncInterval);
 }
 
+/* operations needed when state is changed */
 static void _e2eTransition(struct PtpPort *p, enum PORT_STATE next)
 {
 	port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
@@ -42,12 +43,15 @@ static void _e2eTransition(struct PtpPort *p, enum PORT_STATE next)
 			set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, -10); /*~1ms*/
 			__setSyncTxTmo(p);
 			break;
+			
 		case PS_PASSIVE:
 			port_set_announce_tmo(p);
 			break;
+			
 		case PS_UNCALIBRATED:
 			flush_last_sync(p);
 			flush_delay_req(p);
+			
 			/* fall through */
 		case PS_SLAVE:
 			port_set_announce_tmo(p);
@@ -99,31 +103,31 @@ static void _p2pTransition(struct PtpPort *p, enum PORT_STATE next)
 	};
 }
 
-static void _slave_priority_warning(struct PtpPort *p)
-{
-	UInteger16 n = portnum(p);
-	pr_warning(PORT_STR_FORMAT"master state recommended in slave only mode", n);
-	pr_warning(PORT_STR_FORMAT"defaultDS.priority1 probably misconfigured", n);
-}
 
+/* ordinary and boundary clock */
 void bc_dispatch(struct PtpPort *p, enum PORT_EVENT event, int mdiff)
 {
+	pr_debug(PORT_STR_FORMAT"dispatch %s event, masterDiff:%d", PORT_NAME(p), ptpPortEventString(event), mdiff );
+
 	if (clock_slave_only(p->clock))
 	{
 		if (event == EV_RS_MASTER || event == EV_RS_GRAND_MASTER)
 		{
-			_slave_priority_warning(p);
+			pr_warning(PORT_STR_FORMAT"master state recommended in slave only mode", PORT_NAME(p));
+			pr_warning(PORT_STR_FORMAT"defaultDS.priority1 probably misconfigured", PORT_NAME(p) );
 		}
 	}
+	TRACE();
 
 	if (!portStateUpdate(p, event, mdiff))
 	{
 		return;
 	}
 
+	TRACE();
 	/* ordinary clock: P2P delay mechanism ?? */
 	if (p->delayMechanism == DM_P2P)
-	{
+	{/* P2P delay in boundary clock */
 		_p2pTransition(p, p->state);
 	}
 	else
@@ -131,14 +135,18 @@ void bc_dispatch(struct PtpPort *p, enum PORT_EVENT event, int mdiff)
 		_e2eTransition(p, p->state);
 	}
 
-	if (p->jbod && p->state == PS_UNCALIBRATED) {
-		if (clock_switch_phc(p->clock, p->phc_index)) {
+	if (p->jbod && p->state == PS_UNCALIBRATED)
+	{
+		if (clock_switch_phc(p->clock, p->phc_index))
+		{
 			p->last_fault_type = FT_SWITCH_PHC;
-			port_dispatch(p, EV_FAULT_DETECTED, 0);
+			PORT_DISPATCH(p, EV_FAULT_DETECTED, 0);
 			return;
 		}
 		clock_sync_interval(p->clock, p->log_sync_interval);
 	}
+	
+	TRACE();
 }
 
 static int _renewTransport(struct PtpPort *p)
@@ -233,17 +241,21 @@ static int _portIgnore(struct PtpPort *p, struct ptp_message *m)
 	return 0;
 }
 
+/* ordinary and boundary clock. called when input of fd is available */
 enum PORT_EVENT bc_event(struct PtpPort *p, int fd_index)
 {
 	enum PORT_EVENT event = EV_NONE;
 	struct ptp_message *msg;
+	TRACE();
 	int cnt, fd = p->fda.fd[fd_index], err;
+
+	TRACE();
 
 	switch (fd_index)
 	{
 		case FD_ANNOUNCE_TIMER:
 		case FD_SYNC_RX_TIMER:
-			pr_debug(PORT_STR_FORMAT"%s timeout", portnum(p), fd_index == FD_SYNC_RX_TIMER ? "RX SYNC" : "ANNOUNCE");
+			pr_debug(PORT_STR_FORMAT"%s timeout", PORT_NAME(p), fd_index == FD_SYNC_RX_TIMER ? "RX SYNC" : "ANNOUNCE");
 			if (p->best)
 				fc_clear(p->best);
 			port_set_announce_tmo(p);
@@ -256,35 +268,35 @@ enum PORT_EVENT bc_event(struct PtpPort *p, int fd_index)
 			return EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES;
 
 		case FD_DELAY_TIMER:
-			pr_debug(PORT_STR_FORMAT"DELAY timeout", portnum(p));
+			pr_debug(PORT_STR_FORMAT"DELAY timeout", PORT_NAME(p));
 			port_set_delay_tmo(p);
 			delay_req_prune(p);
 			return port_delay_request(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 		case FD_QUALIFICATION_TIMER:
-			pr_debug(PORT_STR_FORMAT"QUALIFICATION timeout", portnum(p));
+			pr_debug(PORT_STR_FORMAT"QUALIFICATION timeout", PORT_NAME(p));
 			return EV_QUALIFICATION_TIMEOUT_EXPIRES;
 
 		case FD_MANNO_TIMER:
-			pr_debug(PORT_STR_FORMAT"Master TX Announce timeout", portnum(p));
+			pr_debug(PORT_STR_FORMAT"Master TX Announce timeout", PORT_NAME(p));
 			_setMannoTmo(p);
 			return port_tx_announce(p, NULL) ? EV_FAULT_DETECTED : EV_NONE;
 
 		case FD_SYNC_TX_TIMER:
-			pr_debug(PORT_STR_FORMAT"master sync timeout", portnum(p));
+			pr_debug(PORT_STR_FORMAT"master sync timeout", PORT_NAME(p));
 			__setSyncTxTmo(p);
 			return port_tx_sync(p, NULL) ? EV_FAULT_DETECTED : EV_NONE;
 
 		case FD_UNICAST_SRV_TIMER:
-			pr_debug(PORT_STR_FORMAT"unicast service timeout", portnum(p));
+			pr_debug(PORT_STR_FORMAT"unicast service timeout", PORT_NAME(p));
 			return unicast_service_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 		case FD_UNICAST_REQ_TIMER:
-			pr_debug(PORT_STR_FORMAT"unicast request timeout", portnum(p));
+			pr_debug(PORT_STR_FORMAT"unicast request timeout", PORT_NAME(p));
 			return unicast_client_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 		case FD_RTNL:
-			pr_debug(PORT_STR_FORMAT"received link status notification", portnum(p));
+			pr_debug(PORT_STR_FORMAT"received link status notification", PORT_NAME(p));
 			rtnl_link_status(fd, p->name, port_link_status, p);
 			if (p->link_status == (LINK_UP | LINK_STATE_CHANGED))
 				return EV_FAULT_CLEARED;
@@ -295,6 +307,9 @@ enum PORT_EVENT bc_event(struct PtpPort *p, int fd_index)
 				return EV_NONE;
 	}
 
+	TRACE();
+	pr_debug(PORT_STR_FORMAT"event %s is availbale", PORT_NAME(p), (fd_index==FD_EVENT)?"EVENT":(fd_index==FD_GENERAL)?"GENERAL":"Unknown");
+	TRACE();
 	/* for event and general */
 	msg = msg_allocate();
 	if (!msg)
@@ -305,7 +320,7 @@ enum PORT_EVENT bc_event(struct PtpPort *p, int fd_index)
 	cnt = transport_recv(p->trp, fd, msg);
 	if (cnt <= 0)
 	{
-		pr_err(PORT_STR_FORMAT"recv message failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"recv message failed", PORT_NAME(p));
 		msg_put(msg);
 		return EV_FAULT_DETECTED;
 	}
@@ -313,73 +328,87 @@ enum PORT_EVENT bc_event(struct PtpPort *p, int fd_index)
 	err = ptpMsgReceive(msg, cnt);
 	if (err) 
 	{
-		switch (err) {
-		case -EBADMSG:
-			pr_err(PORT_STR_FORMAT"bad message", portnum(p));
-			break;
-		case -EPROTO:
-			pr_debug(PORT_STR_FORMAT"ignoring message", portnum(p));
-			break;
+		switch (err)
+		{
+			case -EBADMSG:
+				pr_err(PORT_STR_FORMAT"bad message", PORT_NAME(p));
+				break;
+			case -EPROTO:
+				pr_debug(PORT_STR_FORMAT"ignoring message", PORT_NAME(p));
+				break;
 		}
+		
 		msg_put(msg);
 		return EV_NONE;
 	}
 	
+	TRACE();
 	if (_portIgnore(p, msg))
 	{
 		msg_put(msg);
 		return EV_NONE;
 	}
 	
-	if (msg_sots_missing(msg) &&
-	    !(p->timestamping == TS_P2P1STEP && msg_type(msg) == PDELAY_REQ))
+	if (msg_sots_missing(msg) && !(p->timestamping == TS_P2P1STEP && msg_type(msg) == PDELAY_REQ))
 	{
-		pr_err(PORT_STR_FORMAT"received %s without timestamp",
-		       portnum(p), ptpMsgTypeString(msg_type(msg)));
+		pr_err(PORT_STR_FORMAT"received %s without timestamp", PORT_NAME(p), ptpMsgTypeString(msg_type(msg)));
 		msg_put(msg);
 		return EV_NONE;
 	}
 	
-	if (msg_sots_valid(msg)) {
+	if (msg_sots_valid(msg))
+	{
 		ts_add(&msg->hwts.ts, -p->rx_timestamp_offset);
 		clock_check_ts(p->clock, tmv_to_nanoseconds(msg->hwts.ts));
 	}
 
-	switch (msg_type(msg)) {
+	switch (msg_type(msg))
+	{
 		case SYNC:
 			portMsgProSync(p, msg);
 			break;
+			
 		case DELAY_REQ:
 			if (portMsgProDelayReq(p, msg))
 				event = EV_FAULT_DETECTED;
 			break;
+			
 		case PDELAY_REQ:
 			if (portMsgProPDelayReq(p, msg))
 				event = EV_FAULT_DETECTED;
 			break;
+			
 		case PDELAY_RESP:
 			if (portMsgProPDelayResp(p, msg))
 				event = EV_FAULT_DETECTED;
 			break;
+			
 		case FOLLOW_UP:
 			portMsgProFollowUp(p, msg);
 			break;
+			
 		case DELAY_RESP:
 			portMsgProDelayResp(p, msg);
 			break;
+			
 		case PDELAY_RESP_FOLLOW_UP:
 			portMsgProPDelayRespFollowUp(p, msg);
 			break;
+			
 		case ANNOUNCE:
 			if (portMsgProAnnounce(p, msg))
 				event = EV_STATE_DECISION_EVENT;
 			break;
+			
 		case SIGNALING:
-			if (portMsgProSignaling(p, msg)) {
+			if (portMsgProSignaling(p, msg))
+			{
 				event = EV_FAULT_DETECTED;
 			}
 			break;
+			
 		case MANAGEMENT:
+			/* management message is handled by clock, not port */
 			if (clock_manage(p->clock, p, msg))
 				event = EV_STATE_DECISION_EVENT;
 			break;

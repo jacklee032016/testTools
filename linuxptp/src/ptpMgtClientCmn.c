@@ -142,88 +142,92 @@ static void do_set_action(struct PtpMgmtClient *pmc, int action, int index, char
 	int leap_61, leap_59, utc_off_valid;
 	int ptp_timescale, time_traceable, freq_traceable;
 
-	switch (action) {
-	case GET:
-		pmc_send_get_action(pmc, code);
-		return;
-	case SET:
-		break;
-	case RESPONSE:
-	case COMMAND:
-	case ACKNOWLEDGE:
-	default:
-		fprintf(stderr, "%s only allows GET or SET\n",
-			idtab[index].name);
-		return;
+	switch (action)
+	{
+		case GET:
+			pmc_send_get_action(pmc, code);
+			return;
+		case SET:
+			break;
+
+		case RESPONSE:
+		case COMMAND:
+		case ACKNOWLEDGE:
+		default:
+			fprintf(stderr, "%s only allows GET or SET\n",
+				idtab[index].name);
+			return;
 	}
-	switch (code) {
-	case TLV_PRIORITY1:
-	case TLV_PRIORITY2:
-		cnt = sscanf(str,  " %*s %*s %hhu", &mtd.val);
-		if (cnt != 1) {
-			fprintf(stderr, "%s SET needs 1 value\n",
-				idtab[index].name);
+	
+	switch (code)
+	{
+		case TLV_PRIORITY1:
+		case TLV_PRIORITY2:
+			cnt = sscanf(str,  " %*s %*s %hhu", &mtd.val);
+			if (cnt != 1) {
+				fprintf(stderr, "%s SET needs 1 value\n",
+					idtab[index].name);
+				break;
+			}
+			pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
 			break;
-		}
-		pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
-		break;
-	case TLV_GRANDMASTER_SETTINGS_NP:
-		cnt = sscanf(str, " %*s %*s "
-			     "clockClass              %hhu "
-			     "clockAccuracy           %hhx "
-			     "offsetScaledLogVariance %hx "
-			     "currentUtcOffset        %hd "
-			     "leap61                  %d "
-			     "leap59                  %d "
-			     "currentUtcOffsetValid   %d "
-			     "ptpTimescale            %d "
-			     "timeTraceable           %d "
-			     "frequencyTraceable      %d "
-			     "timeSource              %hhx ",
-			     &gsn.clockQuality.clockClass,
-			     &gsn.clockQuality.clockAccuracy,
-			     &gsn.clockQuality.offsetScaledLogVariance,
-			     &gsn.utc_offset,
-			     &leap_61,
-			     &leap_59,
-			     &utc_off_valid,
-			     &ptp_timescale,
-			     &time_traceable,
-			     &freq_traceable,
-			     &gsn.time_source);
-		if (cnt != 11) {
-			fprintf(stderr, "%s SET needs 11 values\n",
-				idtab[index].name);
+		case TLV_GRANDMASTER_SETTINGS_NP:
+			cnt = sscanf(str, " %*s %*s "
+				     "clockClass              %hhu "
+				     "clockAccuracy           %hhx "
+				     "offsetScaledLogVariance %hx "
+				     "currentUtcOffset        %hd "
+				     "leap61                  %d "
+				     "leap59                  %d "
+				     "currentUtcOffsetValid   %d "
+				     "ptpTimescale            %d "
+				     "timeTraceable           %d "
+				     "frequencyTraceable      %d "
+				     "timeSource              %hhx ",
+				     &gsn.clockQuality.clockClass,
+				     &gsn.clockQuality.clockAccuracy,
+				     &gsn.clockQuality.offsetScaledLogVariance,
+				     &gsn.utc_offset,
+				     &leap_61,
+				     &leap_59,
+				     &utc_off_valid,
+				     &ptp_timescale,
+				     &time_traceable,
+				     &freq_traceable,
+				     &gsn.time_source);
+			if (cnt != 11) {
+				fprintf(stderr, "%s SET needs 11 values\n",
+					idtab[index].name);
+				break;
+			}
+			gsn.time_flags = 0;
+			if (leap_61)
+				gsn.time_flags |= LEAP_61;
+			if (leap_59)
+				gsn.time_flags |= LEAP_59;
+			if (utc_off_valid)
+				gsn.time_flags |= UTC_OFF_VALID;
+			if (ptp_timescale)
+				gsn.time_flags |= PTP_TIMESCALE;
+			if (time_traceable)
+				gsn.time_flags |= TIME_TRACEABLE;
+			if (freq_traceable)
+				gsn.time_flags |= FREQ_TRACEABLE;
+			pmc_send_set_action(pmc, code, &gsn, sizeof(gsn));
 			break;
-		}
-		gsn.time_flags = 0;
-		if (leap_61)
-			gsn.time_flags |= LEAP_61;
-		if (leap_59)
-			gsn.time_flags |= LEAP_59;
-		if (utc_off_valid)
-			gsn.time_flags |= UTC_OFF_VALID;
-		if (ptp_timescale)
-			gsn.time_flags |= PTP_TIMESCALE;
-		if (time_traceable)
-			gsn.time_flags |= TIME_TRACEABLE;
-		if (freq_traceable)
-			gsn.time_flags |= FREQ_TRACEABLE;
-		pmc_send_set_action(pmc, code, &gsn, sizeof(gsn));
-		break;
-	case TLV_PORT_DATA_SET_NP:
-		cnt = sscanf(str, " %*s %*s "
-			     "neighborPropDelayThresh %u "
-			     "asCapable               %d ",
-			     &pnp.neighborPropDelayThresh,
-			     &pnp.asCapable);
-		if (cnt != 2) {
-			fprintf(stderr, "%s SET needs 2 values\n",
-				idtab[index].name);
+		case TLV_PORT_DATA_SET_NP:
+			cnt = sscanf(str, " %*s %*s "
+				     "neighborPropDelayThresh %u "
+				     "asCapable               %d ",
+				     &pnp.neighborPropDelayThresh,
+				     &pnp.asCapable);
+			if (cnt != 2) {
+				fprintf(stderr, "%s SET needs 2 values\n",
+					idtab[index].name);
+				break;
+			}
+			pmc_send_set_action(pmc, code, &pnp, sizeof(pnp));
 			break;
-		}
-		pmc_send_set_action(pmc, code, &pnp, sizeof(pnp));
-		break;
 	}
 }
 
@@ -305,17 +309,20 @@ static void print_help(FILE *fp)
 	fprintf(fp, "\n");
 }
 
-struct PtpMgmtClient {
-	UInteger16 sequence_id;
-	UInteger8 boundary_hops;
-	UInteger8 domain_number;
-	UInteger8 transport_specific;
-	struct PortIdentity port_identity;
-	struct PortIdentity target;
+struct PtpMgmtClient
+{
+	UInteger16			sequence_id;
+	UInteger8			boundary_hops;
+	UInteger8			domain_number;
+	UInteger8			transport_specific;
+	
+	struct PortIdentity		port_identity;
+	struct PortIdentity		target;
 
-	struct transport *transport;
-	struct FdArray fdarray;
-	int zero_length_gets;
+	struct transport		*transport;
+	struct FdArray		fdarray;
+	
+	int					zero_length_gets;
 };
 
 struct PtpMgmtClient *pmc_create(struct PtpConfig *cfg, enum transport_type transport_type,
@@ -488,6 +495,7 @@ int pmc_get_transport_fd(struct PtpMgmtClient *pmc)
 	return pmc->fdarray.fd[FD_GENERAL];
 }
 
+
 int pmc_send_get_action(struct PtpMgmtClient *pmc, int id)
 {
 	int datalen, pdulen;
@@ -499,6 +507,7 @@ int pmc_send_get_action(struct PtpMgmtClient *pmc, int id)
 	if (!msg) {
 		return -1;
 	}
+	
 	mgt = (struct management_tlv *) msg->management.suffix;
 	mgt->type = TLV_MANAGEMENT;
 	datalen = pmc_tlv_datalen(pmc, id);

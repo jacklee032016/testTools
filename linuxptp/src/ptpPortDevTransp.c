@@ -50,7 +50,9 @@ void p2p_dispatch(struct PtpPort *p, enum PORT_EVENT event, int mdiff)
 	if (!portStateUpdate(p, event, mdiff)) {
 		return;
 	}
-	if (!portnum(p)) {
+
+	if (!PORT_NUMBER(p))
+	{
 		/* UDS needs no timers. */
 		return;
 	}
@@ -98,10 +100,11 @@ enum PORT_EVENT p2p_event(struct PtpPort *p, int fd_index)
 	enum PORT_EVENT event = EV_NONE;
 	struct ptp_message *msg, *dup;
 
+TRACE();
 	switch (fd_index) {
 		case FD_ANNOUNCE_TIMER:
 		case FD_SYNC_RX_TIMER:
-			pr_debug(PORT_STR_FORMAT"%s timeout", portnum(p),
+			pr_debug(PORT_STR_FORMAT"%s timeout", PORT_NAME(p),
 				 fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
 			if (p->best) {
 				fc_clear(p->best);
@@ -110,13 +113,13 @@ enum PORT_EVENT p2p_event(struct PtpPort *p, int fd_index)
 			return EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES;
 
 		case FD_DELAY_TIMER:
-			pr_debug(PORT_STR_FORMAT"delay timeout", portnum(p));
+			pr_debug(PORT_STR_FORMAT"delay timeout", PORT_NAME(p));
 			port_set_delay_tmo(p);
 			tc_prune(p);
 			return _p2pDelayRequest(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 		case FD_QUALIFICATION_TIMER:
-			pr_debug(PORT_STR_FORMAT"qualification timeout", portnum(p));
+			pr_debug(PORT_STR_FORMAT"qualification timeout", PORT_NAME(p));
 			return EV_QUALIFICATION_TIMEOUT_EXPIRES;
 
 		case FD_MANNO_TIMER:
@@ -127,7 +130,7 @@ enum PORT_EVENT p2p_event(struct PtpPort *p, int fd_index)
 			return EV_NONE;
 
 		case FD_RTNL:
-			pr_debug(PORT_STR_FORMAT"received link status notification", portnum(p));
+			pr_debug(PORT_STR_FORMAT"received link status notification", PORT_NAME(p));
 			rtnl_link_status(fd, p->name, port_link_status, p);
 			if (p->link_status == (LINK_UP|LINK_STATE_CHANGED)) {
 				return EV_FAULT_CLEARED;
@@ -147,7 +150,7 @@ enum PORT_EVENT p2p_event(struct PtpPort *p, int fd_index)
 
 	cnt = transport_recv(p->trp, fd, msg);
 	if (cnt <= 0) {
-		pr_err(PORT_STR_FORMAT"recv message failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"recv message failed", PORT_NAME(p));
 		msg_put(msg);
 		return EV_FAULT_DETECTED;
 	}
@@ -238,7 +241,7 @@ void e2e_dispatch(struct PtpPort *p, enum PORT_EVENT event, int mdiff)
 	if (!portStateUpdate(p, event, mdiff)) {
 		return;
 	}
-	if (!portnum(p)) {
+	if (!PORT_NUMBER(p)) {
 		/* UDS needs no timers. */
 		return;
 	}
@@ -289,10 +292,11 @@ enum PORT_EVENT e2e_event(struct PtpPort *p, int fd_index)
 	enum PORT_EVENT event = EV_NONE;
 	struct ptp_message *msg, *dup;
 
+TRACE();
 	switch (fd_index) {
 		case FD_ANNOUNCE_TIMER:
 		case FD_SYNC_RX_TIMER:
-			pr_debug(PORT_STR_FORMAT"%s timeout", portnum(p),
+			pr_debug(PORT_STR_FORMAT"%s timeout", PORT_NAME(p),
 				 fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
 			if (p->best) {
 				fc_clear(p->best);
@@ -301,7 +305,7 @@ enum PORT_EVENT e2e_event(struct PtpPort *p, int fd_index)
 			return EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES;
 
 		case FD_DELAY_TIMER:
-			pr_debug(PORT_STR_FORMAT"delay timeout", portnum(p));
+			pr_debug(PORT_STR_FORMAT"delay timeout", PORT_NAME(p));
 			port_set_delay_tmo(p);
 			delay_req_prune(p);
 			tc_prune(p);
@@ -320,7 +324,7 @@ enum PORT_EVENT e2e_event(struct PtpPort *p, int fd_index)
 			return event;
 
 		case FD_QUALIFICATION_TIMER:
-			pr_debug(PORT_STR_FORMAT"qualification timeout", portnum(p));
+			pr_debug(PORT_STR_FORMAT"qualification timeout", PORT_NAME(p));
 			return EV_QUALIFICATION_TIMEOUT_EXPIRES;
 
 		case FD_MANNO_TIMER:
@@ -331,7 +335,7 @@ enum PORT_EVENT e2e_event(struct PtpPort *p, int fd_index)
 			return EV_NONE;
 
 		case FD_RTNL:
-			pr_debug(PORT_STR_FORMAT"received link status notification", portnum(p));
+			pr_debug(PORT_STR_FORMAT"received link status notification", PORT_NAME(p));
 			rtnl_link_status(fd, p->name, port_link_status, p);
 			if (p->link_status == (LINK_UP|LINK_STATE_CHANGED)) {
 				return EV_FAULT_CLEARED;
@@ -351,7 +355,7 @@ enum PORT_EVENT e2e_event(struct PtpPort *p, int fd_index)
 
 	cnt = transport_recv(p->trp, fd, msg);
 	if (cnt <= 0) {
-		pr_err(PORT_STR_FORMAT"recv message failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"recv message failed", PORT_NAME(p));
 		msg_put(msg);
 		return EV_FAULT_DETECTED;
 	}

@@ -307,7 +307,7 @@ int peer_prepare_and_send(struct PtpPort *p, struct ptp_message *msg,
 
 int port_capable(struct PtpPort *p)
 {
-	if (!port_is_ieee8021as(p)) {
+	if (!PORT_IS_IEEE8021_AS(p)) {
 		/* Normal 1588 ports are always capable. */
 		goto capable;
 	}
@@ -315,7 +315,7 @@ int port_capable(struct PtpPort *p)
 	if (tmv_to_nanoseconds(p->peer_delay) >	p->neighborPropDelayThresh) {
 		if (p->asCapable)
 			pr_debug(PORT_STR_FORMAT"peer_delay (%" PRId64 ") > neighborPropDelayThresh "
-				"(%" PRId32 "), resetting asCapable", portnum(p),
+				"(%" PRId32 "), resetting asCapable", PORT_NAME(p),
 				tmv_to_nanoseconds(p->peer_delay),
 				p->neighborPropDelayThresh);
 		goto not_capable;
@@ -324,7 +324,7 @@ int port_capable(struct PtpPort *p)
 	if (tmv_to_nanoseconds(p->peer_delay) <	p->min_neighbor_prop_delay) {
 		if (p->asCapable)
 			pr_debug(PORT_STR_FORMAT"peer_delay (%" PRId64 ") < min_neighbor_prop_delay "
-				"(%" PRId32 "), resetting asCapable", portnum(p),
+				"(%" PRId32 "), resetting asCapable", PORT_NAME(p),
 				tmv_to_nanoseconds(p->peer_delay),
 				p->min_neighbor_prop_delay);
 		goto not_capable;
@@ -333,32 +333,32 @@ int port_capable(struct PtpPort *p)
 	if (p->pdr_missing > ALLOWED_LOST_RESPONSES) {
 		if (p->asCapable)
 			pr_debug(PORT_STR_FORMAT"missed %d peer delay resp, "
-				"resetting asCapable", portnum(p), p->pdr_missing);
+				"resetting asCapable", PORT_NAME(p), p->pdr_missing);
 		goto not_capable;
 	}
 
 	if (p->multiple_seq_pdr_count) {
 		if (p->asCapable)
 			pr_debug(PORT_STR_FORMAT"multiple sequential peer delay resp, "
-				"resetting asCapable", portnum(p));
+				"resetting asCapable", PORT_NAME(p));
 		goto not_capable;
 	}
 
 	if (!p->peer_portid_valid) {
 		if (p->asCapable)
-			pr_debug(PORT_STR_FORMAT"invalid peer port id, resetting asCapable", portnum(p));
+			pr_debug(PORT_STR_FORMAT"invalid peer port id, resetting asCapable", PORT_NAME(p));
 		goto not_capable;
 	}
 
 	if (!p->nrate.ratio_valid) {
 		if (p->asCapable)
-			pr_debug(PORT_STR_FORMAT"invalid nrate, resetting asCapable", portnum(p));
+			pr_debug(PORT_STR_FORMAT"invalid nrate, resetting asCapable", PORT_NAME(p));
 		goto not_capable;
 	}
 
 capable:
 	if (!p->asCapable)
-		pr_debug(PORT_STR_FORMAT"setting asCapable", portnum(p));
+		pr_debug(PORT_STR_FORMAT"setting asCapable", PORT_NAME(p));
 	p->asCapable = 1;
 	return 1;
 
@@ -386,7 +386,7 @@ static int port_sync_incapable(struct PtpPort *p)
 	struct ClockIdentity cid;
 	struct PortIdentity pid;
 
-	if (!port_is_ieee8021as(p)) {
+	if (!PORT_IS_IEEE8021_AS(p)) {
 		return 0;
 	}
 	if (clock_gm_capable(p->clock)) {
@@ -428,6 +428,7 @@ void port_nrate_initialize(struct PtpPort *p)
 	p->nrate.ratio = 1.0;
 	p->nrate.ratio_valid = 0;
 }
+
 
 int port_set_announce_tmo(struct PtpPort *p)
 {
@@ -481,8 +482,7 @@ static int port_pdelay_request(struct PtpPort *p)
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.delayreq++;
 	msg->header.control            = CTL_OTHER;
-	msg->header.logMessageInterval = port_is_ieee8021as(p) ?
-		p->logMinPdelayReqInterval : 0x7f;
+	msg->header.logMessageInterval = PORT_IS_IEEE8021_AS(p) ? p->logMinPdelayReqInterval : 0x7f;
 
 	if (unicast_client_enabled(p) && p->unicast_master_table->peer_name) {
 		msg->address = p->unicast_master_table->peer_addr.address;
@@ -491,7 +491,7 @@ static int port_pdelay_request(struct PtpPort *p)
 
 	err = peer_prepare_and_send(p, msg, TRANS_EVENT);
 	if (err) {
-		pr_err(PORT_STR_FORMAT"send peer delay request failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"send peer delay request failed", PORT_NAME(p));
 		goto out;
 	}
 	if (msg_sots_missing(msg)) {
@@ -554,7 +554,7 @@ int port_delay_request(struct PtpPort *p)
 	}
 
 	if (port_prepare_and_send(p, msg, TRANS_EVENT)) {
-		pr_err(PORT_STR_FORMAT"send delay request failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"send delay request failed", PORT_NAME(p));
 		goto out;
 	}
 	if (msg_sots_missing(msg)) {
@@ -613,13 +613,15 @@ int port_tx_announce(struct PtpPort *p, struct address *dst)
 	msg->announce.stepsRemoved            = clock_steps_removed(p->clock);
 	msg->announce.timeSource              = tp->timeSource;
 
-	if (p->path_trace_enabled && path_trace_append(p, msg, dad)) {
-		pr_err(PORT_STR_FORMAT"append path trace failed", portnum(p));
+	if (p->path_trace_enabled && path_trace_append(p, msg, dad))
+	{
+		pr_err(PORT_STR_FORMAT"append path trace failed", PORT_NAME(p));
 	}
 
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
-	if (err) {
-		pr_err(PORT_STR_FORMAT"send announce failed", portnum(p));
+	if (err)
+	{
+		pr_err(PORT_STR_FORMAT"send announce failed", PORT_NAME(p));
 	}
 	msg_put(msg);
 	return err;
@@ -687,7 +689,7 @@ int port_tx_sync(struct PtpPort *p, struct address *dst)
 	}
 	err = port_prepare_and_send(p, msg, event);
 	if (err) {
-		pr_err(PORT_STR_FORMAT"send sync failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"send sync failed", PORT_NAME(p));
 		goto out;
 	}
 	if (p->timestamping == TS_ONESTEP || p->timestamping == TS_P2P1STEP) {
@@ -718,15 +720,17 @@ int port_tx_sync(struct PtpPort *p, struct address *dst)
 		fup->address = *dst;
 		fup->header.flagField[0] |= UNICAST;
 	}
-	if (p->follow_up_info && follow_up_info_append(fup)) {
-		pr_err(PORT_STR_FORMAT"append fup info failed", portnum(p));
+
+	if (p->follow_up_info && follow_up_info_append(fup))
+	{
+		pr_err(PORT_STR_FORMAT"append fup info failed", PORT_NAME(p));
 		err = -1;
 		goto out;
 	}
 
 	err = port_prepare_and_send(p, fup, TRANS_GENERAL);
 	if (err) {
-		pr_err(PORT_STR_FORMAT"send follow up failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"send follow up failed", PORT_NAME(p));
 	}
 out:
 	msg_put(msg);
@@ -828,14 +832,14 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 		p->link_status = link_state;
 	} else {
 		p->link_status = link_state | LINK_STATE_CHANGED;
-		pr_notice(PORT_STR_FORMAT"link %s", portnum(p), linkup ? "up" : "down");
+		pr_notice(PORT_STR_FORMAT"link %s", PORT_NAME(p), linkup ? "up" : "down");
 	}
 
 	/* ts_label changed */
 	if (if_indextoname(ts_index, ts_label) && strcmp(p->iface->ts_label, ts_label)) {
 		strncpy(p->iface->ts_label, ts_label, MAX_IFNAME_SIZE);
 		p->link_status |= TS_LABEL_CHANGED;
-		pr_notice(PORT_STR_FORMAT"ts label changed to %s", portnum(p), ts_label);
+		pr_notice(PORT_STR_FORMAT"ts label changed to %s", PORT_NAME(p), ts_label);
 	}
 
 	/* Both link down/up and change ts_label may change phc index. */
@@ -854,9 +858,10 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 			} else if (p->phc_index != p->iface->ts_info.phc_index) {
 				p->phc_index = p->iface->ts_info.phc_index;
 
-				if (clock_switch_phc(p->clock, p->phc_index)) {
+				if (clock_switch_phc(p->clock, p->phc_index))
+				{
 					p->last_fault_type = FT_SWITCH_PHC;
-					port_dispatch(p, EV_FAULT_DETECTED, 0);
+					PORT_DISPATCH(p, EV_FAULT_DETECTED, 0);
 					return;
 				}
 				clock_sync_interval(p->clock, p->log_sync_interval);

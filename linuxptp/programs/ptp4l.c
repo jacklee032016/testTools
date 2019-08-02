@@ -72,8 +72,11 @@ int main(int argc, char *argv[])
 	struct option *opts;
 	struct PtpConfig *cfg;
 
+#if 0
 	if (handle_term_signals())
 		return -1;
+#endif
+
 
 	cfg = config_create();
 	if (!cfg) {

@@ -27,196 +27,199 @@ static enum PORT_STATE _ptpFsm(enum PORT_STATE state, enum PORT_EVENT event, int
 	if (EV_INITIALIZE == event || EV_POWERUP == event)
 		return PS_INITIALIZING;
 
-	switch (state) {
-	case PS_INITIALIZING:
-		switch (event) {
-		case EV_FAULT_DETECTED:
-			next = PS_FAULTY;
+	switch (state)
+	{
+		case PS_INITIALIZING:
+			switch (event)
+			{
+				case EV_FAULT_DETECTED:
+					next = PS_FAULTY;
+					break;
+				case EV_INIT_COMPLETE:
+					next = PS_LISTENING;
+					break;
+				default:
+					break;
+			}
 			break;
-		case EV_INIT_COMPLETE:
-			next = PS_LISTENING;
-			break;
-		default:
-			break;
-		}
-		break;
 
-	case PS_FAULTY:
-		switch (event) {
-		case EV_DESIGNATED_DISABLED:
-			next = PS_DISABLED;
+		case PS_FAULTY:
+			switch (event)
+			{
+				case EV_DESIGNATED_DISABLED:
+					next = PS_DISABLED;
+					break;
+				case EV_FAULT_CLEARED:
+					next = PS_INITIALIZING;
+					break;
+				default:
+					break;
+			}
 			break;
-		case EV_FAULT_CLEARED:
-			next = PS_INITIALIZING;
-			break;
-		default:
-			break;
-		}
-		break;
 
-	case PS_DISABLED:
-		if (EV_DESIGNATED_ENABLED == event)
-			next = PS_INITIALIZING;
-		break;
+		case PS_DISABLED:
+			if (EV_DESIGNATED_ENABLED == event)
+				next = PS_INITIALIZING;
+			break;
 
-	case PS_LISTENING:
-		switch (event) {
-		case EV_DESIGNATED_DISABLED:
-			next = PS_DISABLED;
-			break;
-		case EV_FAULT_DETECTED:
-			next = PS_FAULTY;
-			break;
-		case EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES:
-			next = PS_MASTER;
-			break;
-		case EV_RS_MASTER:
-			next = PS_PRE_MASTER;
-			break;
-		case EV_RS_GRAND_MASTER:
-			next = PS_GRAND_MASTER;
-			break;
-		case EV_RS_SLAVE:
-			next = PS_UNCALIBRATED;
-			break;
-		case EV_RS_PASSIVE:
-			next = PS_PASSIVE;
-			break;
-		default:
-			break;
-		}
-		break;
-
-	case PS_PRE_MASTER:
-		switch (event) {
-		case EV_DESIGNATED_DISABLED:
-			next = PS_DISABLED;
-			break;
-		case EV_FAULT_DETECTED:
-			next = PS_FAULTY;
-			break;
-		case EV_QUALIFICATION_TIMEOUT_EXPIRES:
-			next = PS_MASTER;
-			break;
-		case EV_RS_SLAVE:
-			next = PS_UNCALIBRATED;
-			break;
-		case EV_RS_PASSIVE:
-			next = PS_PASSIVE;
-			break;
-		default:
-			break;
-		}
-		break;
-
-	case PS_MASTER:
-	case PS_GRAND_MASTER:
-		switch (event) {
-		case EV_DESIGNATED_DISABLED:
-			next = PS_DISABLED;
-			break;
-		case EV_FAULT_DETECTED:
-			next = PS_FAULTY;
-			break;
-		case EV_RS_SLAVE:
-			next = PS_UNCALIBRATED;
-			break;
-		case EV_RS_PASSIVE:
-			next = PS_PASSIVE;
-			break;
-		default:
-			break;
-		}
-		break;
-
-	case PS_PASSIVE:
-		switch (event) {
-		case EV_DESIGNATED_DISABLED:
-			next = PS_DISABLED;
-			break;
-		case EV_FAULT_DETECTED:
-			next = PS_FAULTY;
-			break;
-		case EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES:
-			next = PS_MASTER;
-			break;
-		case EV_RS_MASTER:
-			next = PS_PRE_MASTER;
-			break;
-		case EV_RS_GRAND_MASTER:
-			next = PS_GRAND_MASTER;
-			break;
-		case EV_RS_SLAVE:
-			next = PS_UNCALIBRATED;
-			break;
-		default:
-			break;
-		}
-		break;
-
-	case PS_UNCALIBRATED:
-		switch (event) {
-		case EV_DESIGNATED_DISABLED:
-			next = PS_DISABLED;
-			break;
-		case EV_FAULT_DETECTED:
-			next = PS_FAULTY;
-			break;
-		case EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES:
-			next = PS_MASTER;
-			break;
-		case EV_MASTER_CLOCK_SELECTED:
-			next = PS_SLAVE;
-			break;
-		case EV_RS_MASTER:
-			next = PS_PRE_MASTER;
-			break;
-		case EV_RS_GRAND_MASTER:
-			next = PS_GRAND_MASTER;
-			break;
-		case EV_RS_SLAVE:
-			next = PS_UNCALIBRATED;
-			break;
-		case EV_RS_PASSIVE:
-			next = PS_PASSIVE;
-			break;
-		default:
-			break;
-		}
-		break;
-
-	case PS_SLAVE:
-		switch (event) {
-		case EV_DESIGNATED_DISABLED:
-			next = PS_DISABLED;
-			break;
-		case EV_FAULT_DETECTED:
-			next = PS_FAULTY;
-			break;
-		case EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES:
-			next = PS_MASTER;
-			break;
-		case EV_SYNCHRONIZATION_FAULT:
-			next = PS_UNCALIBRATED;
-			break;
-		case EV_RS_MASTER:
-			next = PS_PRE_MASTER;
-			break;
-		case EV_RS_GRAND_MASTER:
-			next = PS_GRAND_MASTER;
-			break;
-		case EV_RS_SLAVE:
-			if (mdiff)
+		case PS_LISTENING:
+			switch (event) {
+			case EV_DESIGNATED_DISABLED:
+				next = PS_DISABLED;
+				break;
+			case EV_FAULT_DETECTED:
+				next = PS_FAULTY;
+				break;
+			case EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES:
+				next = PS_MASTER;
+				break;
+			case EV_RS_MASTER:
+				next = PS_PRE_MASTER;
+				break;
+			case EV_RS_GRAND_MASTER:
+				next = PS_GRAND_MASTER;
+				break;
+			case EV_RS_SLAVE:
 				next = PS_UNCALIBRATED;
+				break;
+			case EV_RS_PASSIVE:
+				next = PS_PASSIVE;
+				break;
+			default:
+				break;
+			}
 			break;
-		case EV_RS_PASSIVE:
-			next = PS_PASSIVE;
+
+		case PS_PRE_MASTER:
+			switch (event) {
+			case EV_DESIGNATED_DISABLED:
+				next = PS_DISABLED;
+				break;
+			case EV_FAULT_DETECTED:
+				next = PS_FAULTY;
+				break;
+			case EV_QUALIFICATION_TIMEOUT_EXPIRES:
+				next = PS_MASTER;
+				break;
+			case EV_RS_SLAVE:
+				next = PS_UNCALIBRATED;
+				break;
+			case EV_RS_PASSIVE:
+				next = PS_PASSIVE;
+				break;
+			default:
+				break;
+			}
 			break;
-		default:
+
+		case PS_MASTER:
+		case PS_GRAND_MASTER:
+			switch (event) {
+			case EV_DESIGNATED_DISABLED:
+				next = PS_DISABLED;
+				break;
+			case EV_FAULT_DETECTED:
+				next = PS_FAULTY;
+				break;
+			case EV_RS_SLAVE:
+				next = PS_UNCALIBRATED;
+				break;
+			case EV_RS_PASSIVE:
+				next = PS_PASSIVE;
+				break;
+			default:
+				break;
+			}
+			break;
+
+		case PS_PASSIVE:
+			switch (event) {
+			case EV_DESIGNATED_DISABLED:
+				next = PS_DISABLED;
+				break;
+			case EV_FAULT_DETECTED:
+				next = PS_FAULTY;
+				break;
+			case EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES:
+				next = PS_MASTER;
+				break;
+			case EV_RS_MASTER:
+				next = PS_PRE_MASTER;
+				break;
+			case EV_RS_GRAND_MASTER:
+				next = PS_GRAND_MASTER;
+				break;
+			case EV_RS_SLAVE:
+				next = PS_UNCALIBRATED;
+				break;
+			default:
+				break;
+			}
+			break;
+
+		case PS_UNCALIBRATED:
+			switch (event) {
+			case EV_DESIGNATED_DISABLED:
+				next = PS_DISABLED;
+				break;
+			case EV_FAULT_DETECTED:
+				next = PS_FAULTY;
+				break;
+			case EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES:
+				next = PS_MASTER;
+				break;
+			case EV_MASTER_CLOCK_SELECTED:
+				next = PS_SLAVE;
+				break;
+			case EV_RS_MASTER:
+				next = PS_PRE_MASTER;
+				break;
+			case EV_RS_GRAND_MASTER:
+				next = PS_GRAND_MASTER;
+				break;
+			case EV_RS_SLAVE:
+				next = PS_UNCALIBRATED;
+				break;
+			case EV_RS_PASSIVE:
+				next = PS_PASSIVE;
+				break;
+			default:
+				break;
+			}
+			break;
+
+		case PS_SLAVE:
+			switch (event) {
+			case EV_DESIGNATED_DISABLED:
+				next = PS_DISABLED;
+				break;
+			case EV_FAULT_DETECTED:
+				next = PS_FAULTY;
+				break;
+			case EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES:
+				next = PS_MASTER;
+				break;
+			case EV_SYNCHRONIZATION_FAULT:
+				next = PS_UNCALIBRATED;
+				break;
+			case EV_RS_MASTER:
+				next = PS_PRE_MASTER;
+				break;
+			case EV_RS_GRAND_MASTER:
+				next = PS_GRAND_MASTER;
+				break;
+			case EV_RS_SLAVE:
+				if (mdiff)
+					next = PS_UNCALIBRATED;
+				break;
+			case EV_RS_PASSIVE:
+				next = PS_PASSIVE;
+				break;
+			default:
+				break;
+			}
 			break;
 		}
-		break;
-	}
 
 	return next;
 }
@@ -371,6 +374,7 @@ int port_initialize(struct PtpPort *p)
 			goto no_timers;
 		}
 	}
+	
 	if (transport_open(p->trp, p->iface, &p->fda, p->timestamping))
 		goto no_tropen;
 
@@ -386,7 +390,8 @@ int port_initialize(struct PtpPort *p)
 	}
 
 	/* No need to open rtnl socket on UDS port. */
-	if (TransportType(p->trp) != TRANS_UDS) {
+	if (TransportType(p->trp) != TRANS_UDS)
+	{
 		if (p->fda.fd[FD_RTNL] == -1)
 			p->fda.fd[FD_RTNL] = rtnl_open();
 		if (p->fda.fd[FD_RTNL] >= 0)
@@ -400,6 +405,7 @@ int port_initialize(struct PtpPort *p)
 
 no_tmo:
 	transport_close(p->trp, &p->fda);
+	
 no_tropen:
 no_timers:
 	for (i = 0; i < N_TIMER_FDS; i++) {
@@ -412,6 +418,7 @@ no_timers:
 
 #define ANNOUNCE_SPAN 1
 
+/* when readtime clock is used, phc_index==-1 */
 struct PtpPort *portCreate(int phc_index, enum timestamp_type timestamping, int number, struct PtpInterface *ptpIntf, struct PtpClock *clock)
 {
 	enum CLOCK_TYPE type = clock_type(clock);
@@ -434,17 +441,18 @@ struct PtpPort *portCreate(int phc_index, enum timestamp_type timestamping, int 
 	{
 		case CLOCK_TYPE_ORDINARY:
 		case CLOCK_TYPE_BOUNDARY:
-			p->dispatch = bc_dispatch;
-			p->event = bc_event;
+			p->cbDispatch = bc_dispatch;
+			p->cbEvent = bc_event;
 			break;
 		case CLOCK_TYPE_P2P:
-			p->dispatch = p2p_dispatch;
-			p->event = p2p_event;
+			p->cbDispatch = p2p_dispatch;
+			p->cbEvent = p2p_event;
 			break;
 		case CLOCK_TYPE_E2E:
-			p->dispatch = e2e_dispatch;
-			p->event = e2e_event;
+			p->cbDispatch = e2e_dispatch;
+			p->cbEvent = e2e_event;
 			break;
+			
 		case CLOCK_TYPE_MANAGEMENT:
 			goto err_port;
 	}
@@ -454,7 +462,8 @@ struct PtpPort *portCreate(int phc_index, enum timestamp_type timestamping, int 
 	p->jbod = config_get_int(cfg, ptpIntf->name, "boundary_clock_jbod");
 	transport = config_get_int(cfg, ptpIntf->name, "network_transport");
 
-	if (transport == TRANS_UDS) {
+	if (transport == TRANS_UDS)
+	{
 		; /* UDS cannot have a PHC. */
 	}
 	else if (!ptpIntf->ts_info.valid)
@@ -468,8 +477,7 @@ struct PtpPort *portCreate(int phc_index, enum timestamp_type timestamping, int 
 			p->phc_index = ptpIntf->ts_info.phc_index;
 		} else {
 			pr_err("port %d: PHC device mismatch", number);
-			pr_err("port %d: /dev/ptp%d requested, ptp%d attached",
-			       number, phc_index, ptpIntf->ts_info.phc_index);
+			pr_err("port %d: /dev/ptp%d requested, ptp%d attached", number, phc_index, ptpIntf->ts_info.phc_index);
 			goto err_port;
 		}
 	}
@@ -515,18 +523,25 @@ struct PtpPort *portCreate(int phc_index, enum timestamp_type timestamping, int 
 	}
 	p->hybrid_e2e = config_get_int(cfg, p->name, "hybrid_e2e");
 
-	if (number && type == CLOCK_TYPE_P2P && p->delayMechanism != DM_P2P) {
+	if (number && type == CLOCK_TYPE_P2P && p->delayMechanism != DM_P2P)
+	{
 		pr_err("port %d: P2P TC needs P2P ports", number);
 		goto err_port;
 	}
-	if (number && type == CLOCK_TYPE_E2E && p->delayMechanism != DM_E2E) {
+	
+	if (number && type == CLOCK_TYPE_E2E && p->delayMechanism != DM_E2E)
+	{
 		pr_err("port %d: E2E TC needs E2E ports", number);
 		goto err_port;
 	}
-	if (p->hybrid_e2e && p->delayMechanism != DM_E2E) {
+	
+	if (p->hybrid_e2e && p->delayMechanism != DM_E2E)
+	{
 		pr_warning("port %d: hybrid_e2e only works with E2E", number);
 	}
-	if (p->net_sync_monitor && !p->hybrid_e2e) {
+	
+	if (p->net_sync_monitor && !p->hybrid_e2e)
+	{
 		pr_warning("port %d: net_sync_monitor needs hybrid_e2e", number);
 	}
 

@@ -17,23 +17,30 @@ static clockid_t clock_open(char *device, int *phc_index)
 	/* check if device is valid phc device */
 	clkid = phc_open(device);
 	if (clkid != CLOCK_INVALID)
+	{/* when it is phc device */
 		return clkid;
+	}
 
 	/* check if device is a valid ethernet device */
-	if (sk_get_ts_info(device, &ts_info) || !ts_info.valid) {
-		fprintf(stderr, "unknown clock %s: %m\n", device);
+	if (sk_get_ts_info(device, &ts_info) || !ts_info.valid)
+	{
+		EXT_ERRORF("unknown clock %s: %m", device);
 		return CLOCK_INVALID;
 	}
 
-	if (ts_info.phc_index < 0) {
-		fprintf(stderr, "interface %s does not have a PHC\n", device);
+	if (ts_info.phc_index < 0)
+	{
+		EXT_ERRORF("interface %s does not have a PHC", device);
 		return CLOCK_INVALID;
 	}
 
+	/* if ethernet device is also PHC, then open phc and associated with this ethernet device */
 	sprintf(phc_device, "/dev/ptp%d", ts_info.phc_index);
 	clkid = phc_open(phc_device);
 	if (clkid == CLOCK_INVALID)
-		fprintf(stderr, "cannot open %s: %m\n", device);
+	{
+		EXT_ERRORF("cannot open %s: %m", device);
+	}
 	*phc_index = ts_info.phc_index;
 	return clkid;
 }

@@ -410,9 +410,9 @@ struct PtpClock *clock_create(enum CLOCK_TYPE type, struct PtpConfig *config, co
 
 	LIST_FOREACH(p, &c->clkPorts, list)
 	{
-		port_dispatch(p, EV_INITIALIZE, 0);
+		PORT_DISPATCH(p, EV_INITIALIZE, 0);
 	}
-	port_dispatch(c->uds_port, EV_INITIALIZE, 0);
+	PORT_DISPATCH(c->uds_port, EV_INITIALIZE, 0);
 
 	return c;
 }

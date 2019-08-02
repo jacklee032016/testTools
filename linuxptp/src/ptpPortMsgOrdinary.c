@@ -48,13 +48,15 @@ static int _addForeignMaster(struct PtpPort *p, struct ptp_message *m)
 	}
 	
 	if (!fc) {
-		pr_notice(PORT_STR_FORMAT"new foreign master %s", portnum(p), pid2str(&m->header.sourcePortIdentity));
+		pr_notice(PORT_STR_FORMAT"new foreign master %s", PORT_NAME(p), pid2str(&m->header.sourcePortIdentity));
 
 		fc = malloc(sizeof(*fc));
-		if (!fc) {
+		if (!fc)
+		{
 			pr_err("low memory, failed to add foreign master");
 			return 0;
 		}
+		
 		memset(fc, 0, sizeof(*fc));
 		TAILQ_INIT(&fc->messages);
 		LIST_INSERT_HEAD(&p->foreign_masters, fc, list);
@@ -142,28 +144,32 @@ int portMsgProAnnounce(struct PtpPort *p, struct ptp_message *m)
 	/* Do not qualify announce messages with stepsRemoved >= 255, see
 	 * IEEE1588-2008 section 9.3.2.5 (d)
 	 */
-	if (m->announce.stepsRemoved >= 255) {
+	if (m->announce.stepsRemoved >= 255)
+	{
 		return result;
 	}
 
-	switch (p->state) {
-	case PS_INITIALIZING:
-	case PS_FAULTY:
-	case PS_DISABLED:
-		break;
-		
-	case PS_LISTENING:
-	case PS_PRE_MASTER:
-	case PS_MASTER:
-	case PS_GRAND_MASTER:
-		result = _addForeignMaster(p, m);
-		break;
-	case PS_PASSIVE:
-	case PS_UNCALIBRATED:
-	case PS_SLAVE:
-		result = _updateCurrentMaster(p, m);
-		break;
+	switch (p->state)
+	{
+		case PS_INITIALIZING:
+		case PS_FAULTY:
+		case PS_DISABLED:
+			break;
+			
+		case PS_LISTENING:
+		case PS_PRE_MASTER:
+		case PS_MASTER:
+		case PS_GRAND_MASTER:
+			result = _addForeignMaster(p, m);
+			break;
+			
+		case PS_PASSIVE:
+		case PS_UNCALIBRATED:
+		case PS_SLAVE:
+			result = _updateCurrentMaster(p, m);
+			break;
 	}
+	
 	return result;
 }
 
@@ -210,10 +216,10 @@ static void __portSynchronize(struct PtpPort *p, tmv_t ingress_ts, struct LocalT
 	switch (state)
 	{
 		case SERVO_UNLOCKED:
-			port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
+			PORT_DISPATCH(p, EV_SYNCHRONIZATION_FAULT, 0);
 			break;
 		case SERVO_JUMP:
-			port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
+			PORT_DISPATCH(p, EV_SYNCHRONIZATION_FAULT, 0);
 			flush_delay_req(p);
 			if (p->peer_delay_req) {
 				msg_put(p->peer_delay_req);
@@ -221,12 +227,13 @@ static void __portSynchronize(struct PtpPort *p, tmv_t ingress_ts, struct LocalT
 			}
 			break;
 		case SERVO_LOCKED:
-			port_dispatch(p, EV_MASTER_CLOCK_SELECTED, 0);
+			PORT_DISPATCH(p, EV_MASTER_CLOCK_SELECTED, 0);
 			break;
 	}
 }
 
 
+/*  FSM of sync and follow up */
 /*
  * Handle out of order packets. The network stack might
  * provide the follow up _before_ the sync message. After all,
@@ -552,7 +559,7 @@ int portMsgProDelayReq(struct PtpPort *p, struct ptp_message *m)
 	}
 
 	if (p->delayMechanism == DM_P2P) {
-		pr_warning(PORT_STR_FORMAT"delay request on P2P port", portnum(p));
+		pr_warning(PORT_STR_FORMAT"delay request on P2P port", PORT_NAME(p));
 		return 0;
 	}
 
@@ -584,14 +591,14 @@ int portMsgProDelayReq(struct PtpPort *p, struct ptp_message *m)
 	}
 	if (nsm && _netSyncRespAppend(p, msg))
 	{
-		pr_err(PORT_STR_FORMAT"append NSM failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"append NSM failed", PORT_NAME(p));
 		err = -1;
 		goto out;
 	}
 	
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {
-		pr_err(PORT_STR_FORMAT"send delay response failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"send delay response failed", PORT_NAME(p));
 		goto out;
 	}
 	if (nsm) {
@@ -652,13 +659,11 @@ void portMsgProDelayResp(struct PtpPort *p, struct ptp_message *m)
 	}
 	if (rsp->hdr.logMessageInterval < -10 ||
 	    rsp->hdr.logMessageInterval > 22) {//?? 300
-		pl_info(300, PORT_STR_FORMAT"ignore bogus delay request interval 2^%d",
-			portnum(p), rsp->hdr.logMessageInterval);
+		pl_info(300, PORT_STR_FORMAT"ignore bogus delay request interval 2^%d", PORT_NAME(p), rsp->hdr.logMessageInterval);
 		return;
 	}
 	p->logMinDelayReqInterval = rsp->hdr.logMessageInterval;
-	pr_notice(PORT_STR_FORMAT"minimum delay request interval 2^%d",
-		  portnum(p), p->logMinDelayReqInterval);
+	pr_notice(PORT_STR_FORMAT"minimum delay request interval 2^%d", PORT_NAME(p), p->logMinDelayReqInterval);
 	port_set_delay_tmo(p);
 }
 

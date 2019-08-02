@@ -2,6 +2,25 @@
 #ifndef	__EXT_LOG_H__
 #define	__EXT_LOG_H__
 
+/* defined in stdlib.h */
+#ifndef	EXIT_FAILURE
+#define	EXIT_FAILURE 			1
+#endif
+
+#ifndef	EXIT_SUCCESS
+#define	EXIT_SUCCESS 			0
+#endif
+
+#ifndef EXT_FALSE
+#define EXT_FALSE				0
+#endif
+
+#ifndef EXT_TRUE
+#define EXT_TRUE				(!EXT_FALSE)
+#endif
+
+#include <stdint.h>
+
 /*
 * debug header, ready to be ported and used to different project
 */

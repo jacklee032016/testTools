@@ -260,7 +260,7 @@ static int unicast_service_reply(struct PtpPort *p, struct ptp_message *dst,
 	}
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {
-		pr_err(PORT_STR_FORMAT"signaling message failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"signaling message failed", PORT_NAME(p));
 	}
 out:
 	msg_put(msg);

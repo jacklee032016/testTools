@@ -65,7 +65,7 @@ static int tc_blocked(struct PtpPort *q, struct PtpPort *p, struct ptp_message *
 	if (q == p) {
 		return 1;
 	}
-	if (portnum(p) == 0) {
+	if (PORT_NUMBER(p) == 0) {
 		return 1;
 	}
 	if (!q->tc_spanning_tree) {
@@ -76,7 +76,7 @@ static int tc_blocked(struct PtpPort *q, struct PtpPort *p, struct ptp_message *
 		return 0;
 	}
 	/* Ingress state */
-	s = portState(q);
+	s = PORT_STATE(q);
 	switch (s) {
 	case PS_INITIALIZING:
 	case PS_FAULTY:
@@ -97,7 +97,7 @@ static int tc_blocked(struct PtpPort *q, struct PtpPort *p, struct ptp_message *
 		break;
 	}
 	/* Egress state */
-	s = portState(p);
+	s = PORT_STATE(p);
 	switch (s) {
 	case PS_INITIALIZING:
 	case PS_FAULTY:
@@ -129,18 +129,18 @@ static void tc_complete_request(struct PtpPort *q, struct PtpPort *p,
 {
 	struct tc_txd *txd = tc_allocate();
 	if (!txd) {
-		port_dispatch(p, EV_FAULT_DETECTED, 0);
+		PORT_DISPATCH(p, EV_FAULT_DETECTED, 0);
 		return;
 	}
 #ifdef DEBUG
 	pr_err("stash delay request from port %hd to %hd seqid %hu residence %lu",
-	       portnum(q), portnum(p), ntohs(req->header.sequenceId),
+	       PORT_NUMBER(q), PORT_NUMBER(p), ntohs(req->header.sequenceId),
 	       (unsigned long) tmv_to_nanoseconds(residence));
 #endif
 	msg_get(req);
 	txd->msg = req;
 	txd->residence = residence;
-	txd->ingress_port = portnum(q);
+	txd->ingress_port = PORT_NUMBER(q);
 	TAILQ_INSERT_TAIL(&p->tc_transmitted, txd, list);
 }
 
@@ -154,10 +154,10 @@ static void tc_complete_response(struct PtpPort *q, struct PtpPort *p,
 
 #ifdef DEBUG
 	pr_err("complete delay response from port %hd to %hd seqid %hu",
-	       portnum(q), portnum(p), ntohs(resp->header.sequenceId));
+	       PORT_NUMBER(q), PORT_NUMBER(p), ntohs(resp->header.sequenceId));
 #endif
 	TAILQ_FOREACH(txd, &q->tc_transmitted, list) {
-		type = tc_match_delay(portnum(p), resp, txd);
+		type = tc_match_delay(PORT_NUMBER(p), resp, txd);
 		if (type == TC_DELAY_REQRESP) {
 			residence = txd->residence;
 			break;
@@ -172,8 +172,8 @@ static void tc_complete_response(struct PtpPort *q, struct PtpPort *p,
 	
 	cnt = transport_send(p->trp, &p->fda, TRANS_GENERAL, resp);
 	if (cnt <= 0) {
-		pr_err("tc failed to forward response on port %d", portnum(p));
-		port_dispatch(p, EV_FAULT_DETECTED, 0);
+		pr_err(PORT_STR_FORMAT"tc failed to forward response on port", PORT_NAME(p));
+		PORT_DISPATCH(p, EV_FAULT_DETECTED, 0);
 	}
 	/* Restore original correction value for next egress port. */
 	resp->header.correction = host2net64(c1);
@@ -192,7 +192,7 @@ static void tc_complete_syfup(struct PtpPort *q, struct PtpPort *p,
 	int cnt;
 
 	TAILQ_FOREACH(txd, &p->tc_transmitted, list) {
-		type = tc_match_syfup(portnum(q), msg, txd);
+		type = tc_match_syfup(PORT_NUMBER(q), msg, txd);
 		switch (type) {
 		case TC_MISMATCH:
 			break;
@@ -215,13 +215,13 @@ static void tc_complete_syfup(struct PtpPort *q, struct PtpPort *p,
 	if (type == TC_MISMATCH) {
 		txd = tc_allocate();
 		if (!txd) {
-			port_dispatch(p, EV_FAULT_DETECTED, 0);
+			PORT_DISPATCH(p, EV_FAULT_DETECTED, 0);
 			return;
 		}
 		msg_get(msg);
 		txd->msg = msg;
 		txd->residence = residence;
-		txd->ingress_port = portnum(q);
+		txd->ingress_port = PORT_NUMBER(q);
 		TAILQ_INSERT_TAIL(&p->tc_transmitted, txd, list);
 		return;
 	}
@@ -233,8 +233,8 @@ static void tc_complete_syfup(struct PtpPort *q, struct PtpPort *p,
 	fup->header.correction = host2net64(c2);
 	cnt = transport_send(p->trp, &p->fda, TRANS_GENERAL, fup);
 	if (cnt <= 0) {
-		pr_err("tc failed to forward follow up on port %d", portnum(p));
-		port_dispatch(p, EV_FAULT_DETECTED, 0);
+		pr_err(PORT_STR_FORMAT"tc failed to forward follow up on port", PORT_NAME(p));
+		PORT_DISPATCH(p, EV_FAULT_DETECTED, 0);
 	}
 	/* Restore original correction value for next egress port. */
 	fup->header.correction = host2net64(c1);
@@ -287,9 +287,8 @@ static int tc_fwd_event(struct PtpPort *q, struct ptp_message *msg)
 		}
 		cnt = transport_send(p->trp, &p->fda, TRANS_DEFER_EVENT, msg);
 		if (cnt <= 0) {
-			pr_err("failed to forward event from port %hd to %hd",
-				portnum(q), portnum(p));
-			port_dispatch(p, EV_FAULT_DETECTED, 0);
+			pr_err("failed to forward event from port %hd to %hd", PORT_NUMBER(q), PORT_NUMBER(p));
+			PORT_DISPATCH(p, EV_FAULT_DETECTED, 0);
 		}
 	}
 
@@ -300,9 +299,8 @@ static int tc_fwd_event(struct PtpPort *q, struct ptp_message *msg)
 		}
 		err = transport_txts(&p->fda, msg);
 		if (err || !msg_sots_valid(msg)) {
-			pr_err("failed to fetch txts on port %hd to %hd event",
-				portnum(q), portnum(p));
-			port_dispatch(p, EV_FAULT_DETECTED, 0);
+			pr_err("failed to fetch txts on port %hd to %hd event",  PORT_NUMBER(q), PORT_NUMBER(p));
+			PORT_DISPATCH(p, EV_FAULT_DETECTED, 0);
 			continue;
 		}
 		ts_add(&msg->hwts.ts, p->tx_timestamp_offset);
@@ -339,8 +337,7 @@ static int tc_match_delay(int ingress_port, struct ptp_message *resp,
 	return TC_MISMATCH;
 }
 
-static int tc_match_syfup(int ingress_port, struct ptp_message *msg,
-			  struct tc_txd *txd)
+static int tc_match_syfup(int ingress_port, struct ptp_message *msg, struct tc_txd *txd)
 {
 	if (ingress_port != txd->ingress_port) {
 		return TC_MISMATCH;
@@ -405,9 +402,8 @@ int tc_forward(struct PtpPort *q, struct ptp_message *msg)
 		}
 		cnt = transport_send(p->trp, &p->fda, TRANS_GENERAL, msg);
 		if (cnt <= 0) {
-			pr_err("tc failed to forward message on port %d",
-			       portnum(p));
-			port_dispatch(p, EV_FAULT_DETECTED, 0);
+			pr_err("tc failed to forward message on port %d", PORT_NUMBER(p));
+			PORT_DISPATCH(p, EV_FAULT_DETECTED, 0);
 		}
 	}
 	return 0;
@@ -520,3 +516,4 @@ void tc_prune(struct PtpPort *q)
 		tc_recycle(txd);
 	}
 }
+

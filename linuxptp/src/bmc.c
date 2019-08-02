@@ -178,9 +178,9 @@ enum PORT_STATE bmc_state_decision(struct PtpClock *c, struct PtpPort *r, int (*
 
 	clock_ds = clock_default_ds(c);
 	clock_best = clock_best_foreign(c);
-	port_best = port_best_foreign(r);
+	port_best = PORT_BEST_FOREIGN_DS(r);
 	
-	ps = portState(r);
+	ps = PORT_STATE(r);
 
 	if (!port_best && PS_LISTENING == ps)
 		return ps;

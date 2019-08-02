@@ -160,7 +160,7 @@ static int unicast_client_announce(struct PtpPort *p,
 	}
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {
-		pr_err(PORT_STR_FORMAT"signaling message failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"signaling message failed", PORT_NAME(p));
 	}
 out:
 	msg_put(msg);
@@ -185,8 +185,7 @@ static struct unicast_master_address *unicast_client_ok(struct PtpPort *p,
 		}
 	}
 	if (!ucma) {
-		pr_warning(PORT_STR_FORMAT"received rogue unicast grant or cancel",
-			   portnum(p));
+		pr_warning(PORT_STR_FORMAT"received rogue unicast grant or cancel", PORT_NAME(p));
 		return NULL;
 	}
 	return ucma;
@@ -212,7 +211,7 @@ static int unicast_client_peer_renew(struct PtpPort *p)
 		return 0;
 	}
 	peer->renewal_tmo = 0;
-	pr_debug(PORT_STR_FORMAT"time to renew P2P unicast subscription", portnum(p));
+	pr_debug(PORT_STR_FORMAT"time to renew P2P unicast subscription", PORT_NAME(p));
 
 	msg = port_signaling_construct(p, &peer->address, &peer->portIdentity);
 	if (!msg) {
@@ -225,7 +224,7 @@ static int unicast_client_peer_renew(struct PtpPort *p)
 	}
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {
-		pr_err(PORT_STR_FORMAT"P2P signaling message failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"P2P signaling message failed", PORT_NAME(p));
 	}
 out:
 	msg_put(msg);
@@ -248,7 +247,7 @@ static int unicast_client_renew(struct PtpPort *p,
 		return 0;
 	}
 	dst->renewal_tmo = 0;
-	pr_debug(PORT_STR_FORMAT"time to renew unicast subscriptions", portnum(p));
+	pr_debug(PORT_STR_FORMAT"time to renew unicast subscriptions", PORT_NAME(p));
 
 	msg = port_signaling_construct(p, &dst->address, &dst->portIdentity);
 	if (!msg) {
@@ -278,7 +277,7 @@ static int unicast_client_renew(struct PtpPort *p,
 
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {
-		pr_err(PORT_STR_FORMAT"signaling message failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"signaling message failed", PORT_NAME(p));
 	}
 out:
 	msg_put(msg);
@@ -300,7 +299,7 @@ static void unicast_client_set_renewal(struct PtpPort *p,
 	tmo = now.tv_sec + duration;
 	if (!master->renewal_tmo || tmo < master->renewal_tmo) {
 		master->renewal_tmo = tmo;
-		pr_debug(PORT_STR_FORMAT"renewal timeout at %ld", portnum(p), tmo);
+		pr_debug(PORT_STR_FORMAT"renewal timeout at %ld", PORT_NAME(p), tmo);
 	}
 }
 
@@ -328,7 +327,7 @@ static int unicast_client_sydy(struct PtpPort *p,
 	}
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {
-		pr_err(PORT_STR_FORMAT"signaling message failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"signaling message failed", PORT_NAME(p));
 	}
 out:
 	msg_put(msg);
@@ -363,8 +362,7 @@ int unicast_client_cancel(struct PtpPort *p, struct ptp_message *m,
 	if (cancel->message_type_flags & CANCEL_UNICAST_MAINTAIN_GRANT) {
 		return 0;
 	}
-	pr_warning(PORT_STR_FORMAT"server unilaterally canceled unicast %s grant",
-		   portnum(p), ptpMsgTypeString(mtype));
+	pr_warning(PORT_STR_FORMAT"server unilaterally canceled unicast %s grant", PORT_NAME(p), ptpMsgTypeString(mtype));
 
 	ucma->state = unicast_fsm(ucma->state, UC_EV_CANCEL);
 	ucma->granted &= ~(1 << mtype);
@@ -380,7 +378,7 @@ int unicast_client_cancel(struct PtpPort *p, struct ptp_message *m,
 	}
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {
-		pr_err(PORT_STR_FORMAT"signaling message failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"signaling message failed", PORT_NAME(p));
 	}
 out:
 	msg_put(msg);
@@ -404,24 +402,23 @@ int unicast_client_claim_table(struct PtpPort *p)
 		}
 	}
 	if (!table) {
-		pr_err(PORT_STR_FORMAT"no table with id %d", portnum(p), table_id);
+		pr_err(PORT_STR_FORMAT"no table with id %d", PORT_NAME(p), table_id);
 		return -1;
 	}
 	if (table->port) {
-		pr_err(PORT_STR_FORMAT"table %d already claimed by port %d",
-		       portnum(p), table_id, table->port);
+		pr_err(PORT_STR_FORMAT"table %d already claimed by port %d", PORT_NAME(p), table_id, table->port);
 		return -1;
 	}
 	peer = &table->peer_addr;
 	if (table->peer_name && str2addr(TransportType(p->trp),
 					 table->peer_name, &peer->address))
 	{
-		pr_err(PORT_STR_FORMAT"bad peer address: %s", portnum(p), table->peer_name);
+		pr_err(PORT_STR_FORMAT"bad peer address: %s", PORT_NAME(p), table->peer_name);
 		return -1;
 	}
 	STAILQ_FOREACH(master, &table->addrs, list) {
 		if (master->type != TransportType(p->trp)) {
-			pr_warning(PORT_STR_FORMAT"unicast master transport mismatch", portnum(p));
+			pr_warning(PORT_STR_FORMAT"unicast master transport mismatch", PORT_NAME(p));
 		}
 		if (p->delayMechanism == DM_P2P) {
 			master->sydymsk = P2P_SYDY_MASK;
@@ -429,7 +426,7 @@ int unicast_client_claim_table(struct PtpPort *p)
 			master->sydymsk = E2E_SYDY_MASK;
 		}
 	}
-	table->port = portnum(p);
+	table->port = PORT_NUMBER(p);
 	p->unicast_master_table = table;
 	p->unicast_req_duration =
 		config_get_int(cfg, p->name, "unicast_req_duration");
@@ -456,14 +453,13 @@ void unicast_client_grant(struct PtpPort *p, struct ptp_message *m,
 	mtype = g->message_type >> 4;
 
 	if (!g->durationField) {
-		pr_warning(PORT_STR_FORMAT"unicast grant of %s rejected", portnum(p), ptpMsgTypeString(mtype));
+		pr_warning(PORT_STR_FORMAT"unicast grant of %s rejected", PORT_NAME(p), ptpMsgTypeString(mtype));
 		if (mtype != PDELAY_RESP) {
 			ucma->state = UC_WAIT;
 		}
 		return;
 	}
-	pr_debug(PORT_STR_FORMAT"unicast %s granted for %u sec",
-		 portnum(p), ptpMsgTypeString(mtype), g->durationField);
+	pr_debug(PORT_STR_FORMAT"unicast %s granted for %u sec", PORT_NAME(p), ptpMsgTypeString(mtype), g->durationField);
 
 	if (p->delayMechanism == DM_P2P) {
 		switch (mtype) {

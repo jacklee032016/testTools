@@ -19,7 +19,6 @@ LOCAL_ALL := \
 		ptp4l \
 		hwstamp_ctl \
 		nsm \
-		phc2sys \
 		phc_ctl \
 		pmc \
 		timemaster \

@@ -23,7 +23,8 @@
 #include "ptpProtocol.h"
 #include "ptpImplements.h"
 
-#define	PORT_STR_FORMAT		"PORT#%d: "
+//#define	PORT_STR_FORMAT		"PORT#%d: "
+#define	PORT_STR_FORMAT		"PORT#%s: "
 
 /* forward declarations */
 struct PtpInterface;

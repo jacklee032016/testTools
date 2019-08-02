@@ -36,10 +36,6 @@
 #include "sk.h"
 #include "transportPrivate.h"
 
-#define EVENT_PORT        319
-#define GENERAL_PORT      320
-#define PTP_PRIMARY_MCAST_IP6ADDR "FF0E:0:0:0:0:0:0:181"
-#define PTP_PDELAY_MCAST_IP6ADDR  "FF02:0:0:0:0:0:0:6B"
 
 struct udp6 {
 	struct transport t;
@@ -181,11 +177,11 @@ static int udp6_open(struct transport *t, struct PtpInterface *iface,
 	if (1 != inet_pton(AF_INET6, PTP_PDELAY_MCAST_IP6ADDR, &mc6_addr[MC_PDELAY]))
 		return -1;
 
-	efd = open_socket_ipv6(name, mc6_addr, EVENT_PORT, &udp6->index, hop_limit);
+	efd = open_socket_ipv6(name, mc6_addr, PTP_PORT_EVENT, &udp6->index, hop_limit);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket_ipv6(name, mc6_addr, GENERAL_PORT, &udp6->index, hop_limit);
+	gfd = open_socket_ipv6(name, mc6_addr, PTP_PORT_GENERAL, &udp6->index, hop_limit);
 	if (gfd < 0)
 		goto no_general;
 
@@ -257,7 +253,7 @@ static int udp6_send(struct transport *t, struct FdArray *fda,
 		addr = &addr_buf;
 	}
 
-	addr->sin6.sin6_port = htons(event ? EVENT_PORT : GENERAL_PORT);
+	addr->sin6.sin6_port = htons(event ? PTP_PORT_EVENT : PTP_PORT_GENERAL);
 
 	len += 2; /* Extend the payload by two, for UDP checksum corrections. */
 

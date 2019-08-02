@@ -41,7 +41,7 @@ typedef uint8_t   Octet;
 
 #define MAX_IFNAME_SIZE 108 /* = UNIX_PATH_MAX */
 
-#define NS_PER_SEC 1000000000LL
+#define NS_PER_SEC			1000000000LL		/* 10**9 */
 
 /**
  * Defines the possible delay mechanisms.
@@ -86,8 +86,8 @@ enum NOTIFICATION
  */
 enum
 {
-	FD_EVENT,
-	FD_GENERAL,
+	FD_EVENT,				/* port 319, 2 multicasts, 224.0.1.129(primary), 224.0.0.127(pdelay). ont socket join 2 groups */
+	FD_GENERAL,			/* port 320, 2 multicasts, 224.0.1.129(primary), 224.0.0.127(pdelay). ont socket join 2 groups */
 	FD_DELAY_TIMER,
 	FD_ANNOUNCE_TIMER,
 	FD_SYNC_RX_TIMER,

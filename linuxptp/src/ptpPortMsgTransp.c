@@ -28,11 +28,11 @@ int portMsgProPDelayReq(struct PtpPort *p, struct ptp_message *m)
 	}
 
 	if (p->delayMechanism == DM_E2E) {
-		pr_warning(PORT_STR_FORMAT"pdelay_req on E2E port", portnum(p));
+		pr_warning(PORT_STR_FORMAT"pdelay_req on E2E port", PORT_NAME(p));
 		return 0;
 	}
 	if (p->delayMechanism == DM_AUTO) {
-		pr_info(PORT_STR_FORMAT"peer detected, switch to P2P", portnum(p));
+		pr_info(PORT_STR_FORMAT"peer detected, switch to P2P", PORT_NAME(p));
 		p->delayMechanism = DM_P2P;
 		port_set_delay_tmo(p);
 	}
@@ -40,15 +40,14 @@ int portMsgProPDelayReq(struct PtpPort *p, struct ptp_message *m)
 		if (!pid_eq(&p->peer_portid, &m->header.sourcePortIdentity)) {
 			pr_err(PORT_STR_FORMAT"received pdelay_req msg with "
 				"unexpected peer port id %s",
-				portnum(p),
-				pid2str(&m->header.sourcePortIdentity));
+				PORT_NAME(p), pid2str(&m->header.sourcePortIdentity));
 			p->peer_portid_valid = 0;
 			port_capable(p);
 		}
 	} else {
 		p->peer_portid_valid = 1;
 		p->peer_portid = m->header.sourcePortIdentity;
-		pr_debug(PORT_STR_FORMAT"peer port id set to %s", portnum(p), pid2str(&p->peer_portid));
+		pr_debug(PORT_STR_FORMAT"peer port id set to %s", PORT_NAME(p), pid2str(&p->peer_portid));
 	}
 
 	rsp = msg_allocate();
@@ -95,7 +94,7 @@ int portMsgProPDelayReq(struct PtpPort *p, struct ptp_message *m)
 
 	err = peer_prepare_and_send(p, rsp, event);
 	if (err) {
-		pr_err(PORT_STR_FORMAT"send peer delay response failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"send peer delay response failed", PORT_NAME(p));
 		goto out;
 	}
 	if (p->timestamping == TS_P2P1STEP) {
@@ -133,7 +132,7 @@ int portMsgProPDelayReq(struct PtpPort *p, struct ptp_message *m)
 
 	err = peer_prepare_and_send(p, fup, TRANS_GENERAL);
 	if (err) {
-		pr_err(PORT_STR_FORMAT"send pdelay_resp_fup failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"send pdelay_resp_fup failed", PORT_NAME(p));
 	}
 out:
 	msg_put(rsp);
@@ -249,7 +248,7 @@ int portMsgProPDelayResp(struct PtpPort *p, struct ptp_message *m)
 {
 	if (p->peer_delay_resp) {
 		if (!source_pid_eq(p->peer_delay_resp, m)) {
-			pr_err(PORT_STR_FORMAT"multiple peer responses", portnum(p));
+			pr_err(PORT_STR_FORMAT"multiple peer responses", PORT_NAME(p));
 			if (!p->multiple_pdr_detected) {
 				p->multiple_pdr_detected = 1;
 				p->multiple_seq_pdr_count++;
@@ -261,14 +260,14 @@ int portMsgProPDelayResp(struct PtpPort *p, struct ptp_message *m)
 		}
 	}
 	if (!p->peer_delay_req) {
-		pr_err(PORT_STR_FORMAT"rogue peer delay response", portnum(p));
+		pr_err(PORT_STR_FORMAT"rogue peer delay response", PORT_NAME(p));
 		return -1;
 	}
 	if (p->peer_portid_valid) {
 		if (!pid_eq(&p->peer_portid, &m->header.sourcePortIdentity)) {
 			pr_err(PORT_STR_FORMAT"received pdelay_resp msg with "
 				"unexpected peer port id %s",
-				portnum(p),
+				PORT_NAME(p),
 				pid2str(&m->header.sourcePortIdentity));
 			p->peer_portid_valid = 0;
 			port_capable(p);
@@ -276,7 +275,7 @@ int portMsgProPDelayResp(struct PtpPort *p, struct ptp_message *m)
 	} else {
 		p->peer_portid_valid = 1;
 		p->peer_portid = m->header.sourcePortIdentity;
-		pr_debug(PORT_STR_FORMAT"peer port id set to %s", portnum(p),
+		pr_debug(PORT_STR_FORMAT"peer port id set to %s", PORT_NAME(p),
 			pid2str(&p->peer_portid));
 	}
 

@@ -429,7 +429,7 @@ void clock_follow_up_info(struct PtpClock *c, struct follow_up_info_tlv *f)
 void clock_notify_event(struct PtpClock *c, enum NOTIFICATION event)
 {
 	struct PtpPort *uds = c->uds_port;
-	struct PortIdentity pid = port_identity(uds);
+	struct PortIdentity pid = PORT_IDENTITY(uds);
 	struct ptp_message *msg;
 	int id;
 

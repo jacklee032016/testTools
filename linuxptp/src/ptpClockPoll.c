@@ -62,12 +62,14 @@ static void __fillPollfd(struct pollfd *dest, struct PtpPort *p)
 	struct FdArray *fda;
 	int i;
 
-	fda = port_fda(p);
-	for (i = 0; i < N_POLLFD; i++) {
+	fda = &p->fda;
+	for (i = 0; i < N_POLLFD; i++)
+	{
 		dest[i].fd = fda->fd[i];
 		dest[i].events = POLLIN|POLLPRI;
 	}
-	dest[i].fd = port_fault_fd(p);
+	
+	dest[i].fd = p->fault_fd;
 	dest[i].events = POLLIN|POLLPRI;
 }
 
@@ -76,16 +78,19 @@ static void _checkPollfd(struct PtpClock *c)
 	struct PtpPort *p;
 	struct pollfd *dest = c->pollfd;
 
-	if (c->pollfd_valid) {
+	if (c->pollfd_valid)
+	{
 		return;
 	}
-	
+
+	/* normal ports */
 	LIST_FOREACH(p, &c->clkPorts, list)
 	{
 		__fillPollfd(dest, p);
 		dest += N_CLOCK_PFD;
 	}
-	
+
+	/* UDS port */
 	__fillPollfd(dest, c->uds_port);
 	c->pollfd_valid = 1;
 }
@@ -96,20 +101,20 @@ static int clock_fault_timeout(struct PtpPort *port, int set)
 	struct fault_interval i;
 
 	if (!set) {
-		pr_debug("clearing fault on port %d", port_number(port));
+		pr_debug("clearing fault on port %d", PORT_NUMBER(port));
 		return port_set_fault_timer_lin(port, 0);
 	}
 
-	fault_interval(port, last_fault_type(port), &i);
+	fault_interval(port, PORT_LAST_FAULT_TYPE(port), &i);
 
 	if (i.type == FTMO_LINEAR_SECONDS)
 	{
-		pr_debug("waiting %d seconds to clear fault on port %d", i.val, port_number(port));
+		pr_debug("waiting %d seconds to clear fault on port %d", i.val, PORT_NUMBER(port));
 		return port_set_fault_timer_lin(port, i.val);
 	}
 	else if (i.type == FTMO_LOG2_SECONDS)
 	{
-		pr_debug("waiting 2^{%d} seconds to clear fault on port %d", i.val, port_number(port));
+		pr_debug("waiting 2^{%d} seconds to clear fault on port %d", i.val, PORT_NUMBER(port));
 		return port_set_fault_timer_log(port, 1, i.val);
 	}
 
@@ -124,6 +129,7 @@ static void clock_freq_est_reset(struct PtpClock *c)
 	c->fest.count = 0;
 }
 
+/* use info in ANNOUNCE to select best master clock and update local clock port */
 static void handle_state_decision_event(struct PtpClock *c)
 {
 	struct foreign_clock *best = NULL, *fc;
@@ -131,6 +137,7 @@ static void handle_state_decision_event(struct PtpClock *c)
 	struct PtpPort *piter;
 	int fresh_best = 0;
 
+	/* iterate foreign clock of every port */
 	LIST_FOREACH(piter, &c->clkPorts, list)
 	{
 		fc = port_compute_best(piter);
@@ -141,9 +148,12 @@ static void handle_state_decision_event(struct PtpClock *c)
 			best = fc;
 	}
 
-	if (best) {
+	if (best)
+	{
 		best_id = best->dataset.identity;
-	} else {
+	}
+	else
+	{
 		best_id = c->dds.clockIdentity;
 	}
 
@@ -175,7 +185,8 @@ static void handle_state_decision_event(struct PtpClock *c)
 	{
 		enum PORT_STATE ps;
 		enum PORT_EVENT event;
-		
+
+		/* BMC state decision process, for event of STATE_DECISION_EVENT */
 		ps = bmc_state_decision(c, piter, c->dscmp);
 		
 		switch (ps)
@@ -203,7 +214,7 @@ static void handle_state_decision_event(struct PtpClock *c)
 				break;
 		}
 		
-		port_dispatch(piter, event, fresh_best);
+		PORT_DISPATCH(piter, event, fresh_best);
 	}
 }
 
@@ -215,6 +226,7 @@ int clock_poll(struct PtpClock *c)
 	struct PtpPort *p;
 
 	_checkPollfd(c);
+	
 	cnt = poll(c->pollfd, (c->nports + 1) * N_CLOCK_PFD, -1);
 	if (cnt < 0)
 	{
@@ -222,7 +234,8 @@ int clock_poll(struct PtpClock *c)
 		{
 			return 0;
 		}
-		else {
+		else
+		{
 			pr_emerg("poll failed");
 			return -1;
 		}
@@ -232,6 +245,7 @@ int clock_poll(struct PtpClock *c)
 		return 0;
 	}
 
+	TRACE();
 	cur = c->pollfd;
 
 	LIST_FOREACH(p, &c->clkPorts, list)
@@ -241,11 +255,11 @@ int clock_poll(struct PtpClock *c)
 		{
 			if (cur[i].revents & (POLLIN|POLLPRI))
 			{
-				event = port_event(p, i);
+				event = p->cbEvent(p, i);
 				
 				if (EV_STATE_DECISION_EVENT == event)
 				{/* after ANNOUNCE or MANAGEMENT */
-					pr_debug(PORT_STR_FORMAT"detect %s event", portnum(p), ptpPortEventString(event) );
+					pr_debug(PORT_STR_FORMAT"detect %s event", PORT_NAME(p), ptpPortEventString(event) );
 					c->sde = 1;
 				}
 				
@@ -254,10 +268,11 @@ int clock_poll(struct PtpClock *c)
 					c->sde = 1;
 				}
 				
-				port_dispatch(p, event, 0);
+	TRACE();
+				PORT_DISPATCH(p, event, 0);
 				
 				/* Clear any fault after a little while. */
-				if (PS_FAULTY == portState(p))
+				if (PS_FAULTY == PORT_STATE(p))
 				{
 					clock_fault_timeout(p, 1);
 					break;
@@ -265,41 +280,62 @@ int clock_poll(struct PtpClock *c)
 			}
 		}
 
-		/*
-		 * When the fault timer expires we clear the fault, but only if the link is up.
-		 */
+		/* When the fault timer expires we clear the fault, but only if the link is up */
 		if (cur[N_POLLFD].revents & (POLLIN|POLLPRI))
 		{
 			clock_fault_timeout(p, 0);
 
-			if (port_link_status_get(p))
+			if (PORT_LINK_STATUS(p))
 			{
-				port_dispatch(p, EV_FAULT_CLEARED, 0);
+				PORT_DISPATCH(p, EV_FAULT_CLEARED, 0);
 			}
 		}
 
 		cur += N_CLOCK_PFD;
 	}
 
+	TRACE();
 	/* Check the UDS port. */
 	for (i = 0; i < N_POLLFD; i++)
 	{
 		if (cur[i].revents & (POLLIN|POLLPRI))
 		{
-			event = port_event(c->uds_port, i);
+#if 0		
+	TRACE();
+			if(!p)
+			{
+				TRACE();
+			}
+			if( !p->cbEvent )
+			{
+				TRACE();
+			}
+	TRACE();
+			event = p->cbEvent(c->uds_port, i);
 			if (EV_STATE_DECISION_EVENT == event)
 			{
 				c->sde = 1;
 			}
+#else
+			event = c->uds_port->cbEvent(c->uds_port, i);
+			if (EV_STATE_DECISION_EVENT == event)
+			{
+				c->sde = 1;
+			}
+#endif
 		}
+
+		/* no dispatch for UDS port, so no FSM for it */
 	}
 
 	if (c->sde)
 	{
+	TRACE();
 		handle_state_decision_event(c);
 		c->sde = 0;
 	}
 	
+	TRACE();
 	clock_prune_subscriptions(c);
 	return 0;
 }

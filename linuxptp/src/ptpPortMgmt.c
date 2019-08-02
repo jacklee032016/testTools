@@ -14,7 +14,7 @@ static void port_management_send_error(struct PtpPort *p, struct PtpPort *ingres
 				       struct ptp_message *msg, int error_id)
 {
 	if (port_management_error(p->portIdentity, ingress, msg, error_id))
-		pr_err(PORT_STR_FORMAT"management error failed", portnum(p));
+		pr_err(PORT_STR_FORMAT"management error failed", PORT_NAME(p));
 }
 
 
@@ -206,7 +206,7 @@ static int port_management_get_response(struct PtpPort *target,
 					struct PtpPort *ingress, int id,
 					struct ptp_message *req)
 {
-	struct PortIdentity pid = port_identity(target);
+	struct PortIdentity pid = PORT_IDENTITY(target);
 	struct ptp_message *rsp;
 	int respond;
 
@@ -239,16 +239,17 @@ static int port_management_set(struct PtpPort *target,
 		break;
 	}
 	if (respond && !port_management_get_response(target, ingress, id, req))
-		pr_err(PORT_STR_FORMAT"failed to send management set response", portnum(target));
+		pr_err(PORT_STR_FORMAT"failed to send management set response", PORT_NAME(target));
 	return respond ? 1 : 0;
 }
 
+/* after receiving management message, call this when clock manage is called */
 int port_manage(struct PtpPort *p, struct PtpPort *ingress, struct ptp_message *msg)
 {
 	struct management_tlv *mgt;
 	UInteger16 target = msg->management.targetPortIdentity.portNumber;
 
-	if (target != portnum(p) && target != 0xffff) {
+	if (target != PORT_NUMBER(p) && target != 0xffff) {
 		return 0;
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
@@ -298,7 +299,7 @@ int port_manage(struct PtpPort *p, struct PtpPort *ingress, struct ptp_message *
 
 void port_notify_event(struct PtpPort *p, enum NOTIFICATION event)
 {
-	struct PortIdentity pid = port_identity(p);
+	struct PortIdentity pid = PORT_IDENTITY(p);
 	struct ptp_message *msg;
 	int id;
 

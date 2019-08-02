@@ -129,9 +129,7 @@ enum {
 
 #define TFD_TIMER_ABSTIME (1 << 0)
 
-static inline int clock_nanosleep(clockid_t clock_id, int flags,
-				  const struct timespec *request,
-				  struct timespec *remain)
+static inline int clock_nanosleep(clockid_t clock_id, int flags, const struct timespec *request, struct timespec *remain)
 {
 	return syscall(__NR_clock_nanosleep, clock_id, flags, request, remain);
 }
@@ -141,9 +139,7 @@ static inline int timerfd_create(int clockid, int flags)
 	return syscall(__NR_timerfd_create, clockid, flags);
 }
 
-static inline int timerfd_settime(int fd, int flags,
-				  const struct itimerspec *new_value,
-				  struct itimerspec *old_value)
+static inline int timerfd_settime(int fd, int flags, const struct itimerspec *new_value, struct itimerspec *old_value)
 {
 	return syscall(__NR_timerfd_settime, fd, flags, new_value, old_value);
 }

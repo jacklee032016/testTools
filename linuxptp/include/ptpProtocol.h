@@ -38,6 +38,17 @@
 #define FREQ_TRACEABLE (1<<5)
 
 
+#define PTP_PORT_EVENT						319
+#define PTP_PORT_GENERAL					320
+
+#define PTP_PRIMARY_MCAST_IPADDR			"224.0.1.129"
+#define PTP_PDELAY_MCAST_IPADDR			"224.0.0.107"
+
+
+#define PTP_PRIMARY_MCAST_IP6ADDR			"FF0E:0:0:0:0:0:0:181"
+#define PTP_PDELAY_MCAST_IP6ADDR			"FF02:0:0:0:0:0:0:6B"
+
+
 /************* basic types for PTP protocol ******************/
 #define PACKED __attribute__((packed))
 
@@ -353,39 +364,42 @@ enum management_action
 };
 
 /* Clock management ID values */
-#define TLV_USER_DESCRIPTION				0x0002
-#define TLV_SAVE_IN_NON_VOLATILE_STORAGE		0x0003
+#define TLV_USER_DESCRIPTION						0x0002
+#define TLV_SAVE_IN_NON_VOLATILE_STORAGE			0x0003
 #define TLV_RESET_NON_VOLATILE_STORAGE			0x0004
-#define TLV_INITIALIZE					0x0005
-#define TLV_FAULT_LOG					0x0006
-#define TLV_FAULT_LOG_RESET				0x0007
-#define TLV_DEFAULT_DATA_SET				0x2000
-#define TLV_CURRENT_DATA_SET				0x2001
-#define TLV_PARENT_DATA_SET				0x2002
-#define TLV_TIME_PROPERTIES_DATA_SET			0x2003
-#define TLV_PRIORITY1					0x2005
-#define TLV_PRIORITY2					0x2006
-#define TLV_DOMAIN					0x2007
-#define TLV_SLAVE_ONLY					0x2008
-#define TLV_TIME					0x200F
-#define TLV_CLOCK_ACCURACY				0x2010
-#define TLV_UTC_PROPERTIES				0x2011
-#define TLV_TRACEABILITY_PROPERTIES			0x2012
-#define TLV_TIMESCALE_PROPERTIES			0x2013
-#define TLV_PATH_TRACE_LIST				0x2015
-#define TLV_PATH_TRACE_ENABLE				0x2016
+#define TLV_INITIALIZE								0x0005
+#define TLV_FAULT_LOG								0x0006
+#define TLV_FAULT_LOG_RESET						0x0007
+
+#define TLV_DEFAULT_DATA_SET						0x2000
+#define TLV_CURRENT_DATA_SET						0x2001
+#define TLV_PARENT_DATA_SET						0x2002
+#define TLV_TIME_PROPERTIES_DATA_SET				0x2003
+#define TLV_PRIORITY1								0x2005
+#define TLV_PRIORITY2								0x2006
+#define TLV_DOMAIN									0x2007
+#define TLV_SLAVE_ONLY								0x2008
+#define TLV_TIME										0x200F
+#define TLV_CLOCK_ACCURACY						0x2010
+#define TLV_UTC_PROPERTIES							0x2011
+#define TLV_TRACEABILITY_PROPERTIES				0x2012
+#define TLV_TIMESCALE_PROPERTIES					0x2013
+#define TLV_PATH_TRACE_LIST							0x2015
+#define TLV_PATH_TRACE_ENABLE						0x2016
 #define TLV_GRANDMASTER_CLUSTER_TABLE			0x2017
-#define TLV_ACCEPTABLE_MASTER_TABLE			0x201A
-#define TLV_ACCEPTABLE_MASTER_MAX_TABLE_SIZE		0x201C
-#define TLV_ALTERNATE_TIME_OFFSET_ENABLE		0x201E
+#define TLV_ACCEPTABLE_MASTER_TABLE				0x201A
+#define TLV_ACCEPTABLE_MASTER_MAX_TABLE_SIZE	0x201C
+#define TLV_ALTERNATE_TIME_OFFSET_ENABLE			0x201E
 #define TLV_ALTERNATE_TIME_OFFSET_NAME			0x201F
 #define TLV_ALTERNATE_TIME_OFFSET_MAX_KEY		0x2020
 #define TLV_ALTERNATE_TIME_OFFSET_PROPERTIES		0x2021
+
 #define TLV_TRANSPARENT_CLOCK_DEFAULT_DATA_SET		0x4000
-#define TLV_PRIMARY_DOMAIN				0x4002
-#define TLV_TIME_STATUS_NP				0xC000
-#define TLV_GRANDMASTER_SETTINGS_NP			0xC001
-#define TLV_SUBSCRIBE_EVENTS_NP				0xC003
+#define TLV_PRIMARY_DOMAIN								0x4002
+
+#define TLV_TIME_STATUS_NP								0xC000
+#define TLV_GRANDMASTER_SETTINGS_NP					0xC001
+#define TLV_SUBSCRIBE_EVENTS_NP						0xC003
 
 /* Port management ID values */
 #define TLV_NULL_MANAGEMENT				0x0000
@@ -409,13 +423,14 @@ enum management_action
 #define TLV_PORT_PROPERTIES_NP				0xC004
 
 /* Management error ID values */
-#define TLV_RESPONSE_TOO_BIG				0x0001
-#define TLV_NO_SUCH_ID					0x0002
-#define TLV_WRONG_LENGTH				0x0003
-#define TLV_WRONG_VALUE					0x0004
-#define TLV_NOT_SETABLE					0x0005
-#define TLV_NOT_SUPPORTED				0x0006
-#define TLV_GENERAL_ERROR				0xFFFE
+#define TLV_RESPONSE_TOO_BIG						0x0001
+#define TLV_NO_SUCH_ID								0x0002
+#define TLV_WRONG_LENGTH							0x0003
+#define TLV_WRONG_VALUE							0x0004
+#define TLV_NOT_SETABLE								0x0005
+#define TLV_NOT_SUPPORTED							0x0006
+#define TLV_GENERAL_ERROR							0xFFFE
+
 
 #define CANCEL_UNICAST_MAINTAIN_REQUEST	(1 << 0)
 #define CANCEL_UNICAST_MAINTAIN_GRANT	(1 << 1)
@@ -445,16 +460,18 @@ struct grant_unicast_xmit_tlv {
 	uint8_t         flags;
 } PACKED;
 
-struct management_tlv {
-	Enumeration16 type;
-	UInteger16    length;
-	Enumeration16 id;
-	Octet         data[0];
+struct management_tlv
+{
+	Enumeration16	type;
+	UInteger16		length;
+	Enumeration16	id;
+	Octet			data[0];
 } PACKED;
 
-struct management_tlv_datum {
-	uint8_t val;
-	uint8_t reserved;
+struct management_tlv_datum
+{
+	uint8_t			val;
+	uint8_t			reserved;
 } PACKED;
 
 struct management_error_status {

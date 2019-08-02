@@ -39,6 +39,7 @@ export RELEASES_NAME
 # SUBDIRS += ptpd/src
 SUBDIRS += linuxptp/src
 SUBDIRS += linuxptp/programs
+SUBDIRS += linuxptp/phc
 
 # SUBDIRS += ethtool/src
 
